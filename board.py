@@ -24,10 +24,10 @@ ATK = 'Attack'
 # token templates
 # copying a dict like a tank definition and adding an attribute for color is extra lines of code
 # as it is these have to be set in unit list with .copy() to avoid corrupting original value
-RED_SOLDIER = {TYPE: SOLDIER, HP: 2, MV: 1, ATK: 1, RNG: 3, SIDE: RED}
-BLUE_SOLDIER = {TYPE: SOLDIER, HP: 2, MV: 1, ATK: 1, RNG: 3, SIDE: BLUE}
-RED_TANK = {TYPE: TANK, HP: 4, MV: 4, ATK: 2, RNG: 9, SIDE: RED}
-BLUE_TANK = {TYPE: TANK, HP: 4, MV: 4, ATK: 2, RNG: 9, SIDE: BLUE}
+RED_SOLDIER = {TYPE: SOLDIER, HP: 2, MV: 1, ATK: 1, RNG: 2, SIDE: RED}
+BLUE_SOLDIER = {TYPE: SOLDIER, HP: 2, MV: 1, ATK: 1, RNG: 2, SIDE: BLUE}
+RED_TANK = {TYPE: TANK, HP: 4, MV: 3, ATK: 2, RNG: 4, SIDE: RED}
+BLUE_TANK = {TYPE: TANK, HP: 4, MV: 3, ATK: 2, RNG: 4, SIDE: BLUE}
 RED_FLAG = {TYPE: FLAG, HP: 0, SIDE: RED}
 BLUE_FLAG = {TYPE: FLAG, HP: 0, SIDE: BLUE}
 
@@ -37,12 +37,13 @@ X_MAX = 11
 Y_MAX = 11
 TURNS = [RED, BLUE]
 
+
 class Board:
     def __init__(self):
         # use 1 array for each token type, effectively a one-hot encoding of tokens
         # initialize co-ords [0,0] to [X_MAX,Y_MAX]
         self.terrain = numpy.zeros([X_MAX, Y_MAX])
-        self.positions = numpy.full([X_MAX, Y_MAX], '', dtype='S3')
+        self.positions = numpy.full([X_MAX, Y_MAX], None, dtype='S3')
         self.terrain[6, 4] = 4
         self.terrain[5, 5] = 3
         self.terrain[4, 6] = 2
@@ -98,7 +99,7 @@ class Board:
             hp = 0
             while hp == 0:
                 # modulate over index positions for players in game
-                idx = (TURNS.index(next_turn)+1) % len(TURNS)
+                idx = (TURNS.index(next_turn) + 1) % len(TURNS)
                 next_turn = TURNS[idx]
                 # see if they have any survivors
                 hp = hps.count(TURNS[idx])
@@ -115,9 +116,42 @@ class Board:
             return self.turn
         return None
 
+    def check_move(self, frm, to):
+        # test to see if a move is legal
+        frm_key = self.positions[frm[COL], frm[ROW]]
+        frm_token = self.tokens.get(frm_key)
+        to_key = self.positions[to[COL], to[ROW]]
+        to_token = self.tokens.get(to_key)
+        if frm_token is not None:
+            path = self.get_path(frm, to)
+            if path is None:
+                return False
+            check_dist = frm_token[MV] >= len(path)
+            if to_token is None:
+                return check_dist
+            elif frm_token[TYPE] == SOLDIER:
+                check_oppo = frm_token[SIDE] != to_token[SIDE]
+                return check_dist and check_oppo
+        return False
+
+    def check_shoot(self, frm, to):
+        # test to see if an attack is legal
+        frm_key = self.positions[frm[COL], frm[ROW]]
+        to_key = self.positions[to[COL], to[ROW]]
+        frm_token = self.tokens.get(frm_key)
+        to_token = self.tokens.get(to_key)
+        if frm_token is not None and to_token is not None:
+            check_range = 2 * frm_token[RNG] + 1 > get_distance(frm, to)
+            check_oppo = frm_token[SIDE] != to_token[SIDE]
+            return check_range and check_oppo
+        return False
+
     def check_action(self, frm, to):
-        # update action array and return True if legal move
-        # return False if illegal move
+        # test to see if a game input is some kind of legal action
+        return self.check_move(frm, to) or self.check_shoot(frm, to)
+
+    def resolve_action(self, frm, to):
+        # execute on a game input
         frm_key = self.positions[frm[COL], frm[ROW]]
         print(f'initial tile {frm} id {frm_key}')
         frm_token = self.tokens.get(frm_key)
@@ -126,8 +160,7 @@ class Board:
         to_key = self.positions[to[COL], to[ROW]]
         print(f'destination tile {to} id {to_key}')
         to_token = self.tokens.get(to_key)
-        if to_token is not None:
-            print(f'destination token {to_token}')
+        print(f'destination token {to_token}')
 
         # choose a token
         if frm_token is None:
@@ -144,61 +177,33 @@ class Board:
             print(f'Acting side {self.turn} has already used token {frm_key} this turn')
             return False
 
-        if frm_token[TYPE] == SOLDIER:
-            # legal to move 1 space, any enemy in the target hex is destroyed
-            # soldier eliminates token in destination by taking token off of the board
-            # we still need to modify HP because that's how we check for alternate victory
-            if self.check_1move(frm, to) and (to_token is None or frm_token[SIDE] != to_token[SIDE]):
-                self.positions[frm[COL], frm[ROW]] = ''
-                self.positions[to[COL], to[ROW]] = frm_key
-
+        if self.check_move(frm, to):
+            self.positions[frm[COL], frm[ROW]] = None
+            self.positions[to[COL], to[ROW]] = frm_key
+            if frm_token[TYPE] == SOLDIER:
+                # destroy the captured unit for purpose of counting playable tokens by HP
                 if to_token is not None:
                     to_token[HP] = 0
 
-                    # TODO how do flag captures contribute to victory if there are multiple opponents
+                    # capturing flag converts all units for that side to their captor
                     if to_token[TYPE] == FLAG:
-                        print(f'Unit {frm_key} has captured the enemy base and won the battle')
-                        self.victory = frm_token[SIDE]
+                        captured_side = to_token[SIDE]
+                        print(f'Unit {frm_key} has captured an enemy base')
+                        for key in self.tokens:
+                            unit = self.tokens[key]
+                            if unit[SIDE] == captured_side:
+                                unit[SIDE] = frm_token[SIDE]
 
-                self.acted.append(frm_key)
-                print(f'soldier move')
-                return True
+            self.acted.append(frm_key)
+            return True
 
+        if self.check_shoot(frm, to):
             # legal to attack 2 spaces distance for 1 damage
-            if get_distance(frm, to) < 5 and frm_token[SIDE] != to_token[SIDE]:
-                # reduce target by 1 hp
-                to_token[HP] -= frm_token[ATK]
-                if to_token[HP] < 1:
-                    self.positions[to[COL], to[ROW]] = ''
-                self.acted.append(frm_key)
-                print(f'soldier attack')
-                return True
-
-        if frm_token[TYPE] == TANK:
-            # legal to fire 4 spaces, get_distance counts each hex as 2
-            if to_token is not None and frm_token[SIDE] != to_token[SIDE] and \
-                    get_distance(frm, to) < frm_token[RNG]:
-                to_token[HP] -= frm_token[ATK]
-                if to_token[HP] < 1:
-                    self.positions[to[COL], to[ROW]] = ''
-                self.acted.append(frm_key)
-                print(f'tank attack')
-                return True
-
-            # if firing is not legal we can move the token
-            # movement is subject to pathfinding algorithm
-            # might need some kind of visible feedback in display
-            p = self.get_path(frm, to)
-            print(f'tank path {p}')
-            if p is not None and len(p) < frm_token[MV]:
-                # we could use steps in p to run over anything in the tank's path
-                # but each player's turn is supposed to be non-sequential
-                # it would matter if units moved before or after the tank
-                self.positions[frm[COL], frm[ROW]] = ''
-                self.positions[to[COL], to[ROW]] = frm_key
-                self.acted.append(frm_key)
-                print(f'tank move')
-                return True
+            to_token[HP] -= frm_token[ATK]
+            if to_token[HP] < 1:
+                self.positions[to[COL], to[ROW]] = ''
+            self.acted.append(frm_key)
+            return True
         return False
 
     def get_path(self, frm, to):
@@ -245,7 +250,7 @@ class Board:
                 return None
 
             # set up iteration parameters
-            length = old_length+1
+            length = old_length + 1
             current_dist = get_distance(explore, to)
             closer_list = []
             equal_list = []
@@ -309,34 +314,6 @@ class Board:
         if check_pos(coord):
             return self.terrain[coord[COL], coord[ROW]] == 0
         return False
-
-
-def check_friendly_token(frm_token, to_token):
-    red_v_red = check_red_token(frm_token) and check_red_token(to_token)
-    blue_v_blue = check_blue_token(frm_token) and check_blue_token(to_token)
-    return red_v_red or blue_v_blue
-
-
-def check_enemy_token(frm_token, to_token):
-    red_v_blue = check_red_token(frm_token) and check_blue_token(to_token)
-    blue_v_red = check_blue_token(frm_token) and check_red_token(to_token)
-    return red_v_blue or blue_v_red
-
-
-def check_soldier_token(token):
-    return token[0] == 'b' or token[0] == 'r'
-
-
-def check_tank_token(token):
-    return token[0] == 'B' or token[0] == 'R'
-
-
-def check_red_token(token):
-    return token[0] == 'r' or token[0] == 'R'
-
-
-def check_blue_token(token):
-    return token[0] == 'b' or token[0] == 'B'
 
 
 def check_pos(coord):
