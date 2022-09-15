@@ -28,8 +28,8 @@ RED_SOLDIER = {TYPE: SOLDIER, HP: 2, MV: 1, ATK: 1, RNG: 2, SIDE: RED}
 BLUE_SOLDIER = {TYPE: SOLDIER, HP: 2, MV: 1, ATK: 1, RNG: 2, SIDE: BLUE}
 RED_TANK = {TYPE: TANK, HP: 4, MV: 3, ATK: 2, RNG: 4, SIDE: RED}
 BLUE_TANK = {TYPE: TANK, HP: 4, MV: 3, ATK: 2, RNG: 4, SIDE: BLUE}
-RED_FLAG = {TYPE: FLAG, HP: 0, SIDE: RED}
-BLUE_FLAG = {TYPE: FLAG, HP: 0, SIDE: BLUE}
+RED_FLAG = {TYPE: FLAG, HP: 0, MV: 0, SIDE: RED}
+BLUE_FLAG = {TYPE: FLAG, HP: 0, MV: 0, SIDE: BLUE}
 
 # board dimensions
 # 0,0 is bottom left
@@ -40,13 +40,18 @@ TURNS = [RED, BLUE]
 
 class Board:
     def __init__(self):
+        self.terrain = numpy.zeros([X_MAX, Y_MAX])
+        self.positions = numpy.full([X_MAX, Y_MAX], '', dtype='S3')
+        self.tokens = {}
+        self.turn = None
+        self.acted = []
+        self.victory = None
+        self.reset()
+
+    def reset(self):
         # use 1 array for each token type, effectively a one-hot encoding of tokens
         # initialize co-ords [0,0] to [X_MAX,Y_MAX]
-        self.terrain = numpy.zeros([X_MAX, Y_MAX])
-        self.positions = numpy.full([X_MAX, Y_MAX], None, dtype='S3')
-        self.terrain[6, 4] = 4
-        self.terrain[5, 5] = 3
-        self.terrain[4, 6] = 2
+        self.positions = numpy.full([X_MAX, Y_MAX], '', dtype='S3')
         self.positions[1, 1] = 'RF'
         self.positions[2, 2] = 'R1'
         self.positions[3, 3] = 'r1'
@@ -58,18 +63,19 @@ class Board:
         self.positions[8, 6] = 'b2'
         self.positions[7, 9] = 'b3'
 
-        self.tokens = {b'RF': RED_FLAG.copy(),
-                       b'r1': RED_SOLDIER.copy(),
-                       b'r2': RED_SOLDIER.copy(),
-                       b'r3': RED_SOLDIER.copy(),
-                       b'R1': RED_TANK.copy(),
-                       b'BF': BLUE_FLAG.copy(),
-                       b'b1': BLUE_SOLDIER.copy(),
-                       b'b2': BLUE_SOLDIER.copy(),
-                       b'b3': BLUE_SOLDIER.copy(),
-                       b'B1': BLUE_TANK.copy()}
+        self.tokens[b'RF'] = RED_FLAG.copy()
+        self.tokens[b'r1'] = RED_SOLDIER.copy()
+        self.tokens[b'r2'] = RED_SOLDIER.copy()
+        self.tokens[b'r3'] = RED_SOLDIER.copy()
+        self.tokens[b'R1'] = RED_TANK.copy()
+        self.tokens[b'BF'] = BLUE_FLAG.copy()
+        self.tokens[b'b1'] = BLUE_SOLDIER.copy()
+        self.tokens[b'b2'] = BLUE_SOLDIER.copy()
+        self.tokens[b'b3'] = BLUE_SOLDIER.copy()
+        self.tokens[b'B1'] = BLUE_TANK.copy()
         self.turn = TURNS[0]
-        self.acted = []
+        for key in self.acted:
+            self.acted.remove(key)
         self.victory = None
 
     def check_victory(self):
@@ -178,7 +184,7 @@ class Board:
             return False
 
         if self.check_move(frm, to):
-            self.positions[frm[COL], frm[ROW]] = None
+            self.positions[frm[COL], frm[ROW]] = ''
             self.positions[to[COL], to[ROW]] = frm_key
             if frm_token[TYPE] == SOLDIER:
                 # destroy the captured unit for purpose of counting playable tokens by HP
@@ -314,6 +320,16 @@ class Board:
         if check_pos(coord):
             return self.terrain[coord[COL], coord[ROW]] == 0
         return False
+
+
+def make_coord_num(tpl):
+    return tpl[COL]*100+tpl[ROW]
+
+
+def make_coord_tuple(num):
+    y = num % 100
+    x = num//100
+    return tuple([x, y])
 
 
 def check_pos(coord):

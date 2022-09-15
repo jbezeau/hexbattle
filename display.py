@@ -2,6 +2,7 @@ import pygame as pg
 import pygame.display
 
 import board
+import client
 
 BG_COLOR = (64, 64, 64)
 RED_COLOR = (170, 32, 32)
@@ -27,7 +28,7 @@ def get_scaled_coordinates(coordinates):
 
 
 def get_elevation_color(coordinates):
-    elevation = b.terrain[coordinates[board.COL], coordinates[board.ROW]]
+    elevation = terrain[coordinates[board.COL], coordinates[board.ROW]]
     greyscale = min(255, 32*elevation + 128)
     grey_tuple = (greyscale, greyscale, greyscale)
     return grey_tuple
@@ -86,13 +87,16 @@ def draw_tokens():
     for x in range(board.X_MAX):
         for y in range(board.Y_MAX):
             if board.check_pos((x, y)):
-                token_key = b.positions[x, y]
-                token = b.tokens.get(token_key)
+                # array representation of token keys are byte data
+                # have to convert now that REST calls are formatting token list keys as string
+                token_key = positions[x, y]
+                token_decode = token_key.decode('UTF-8')
+                token = tokens.get(token_decode)
                 health = 0
                 color = ORANGE_COLOR
                 shape = get_pentagon((x, y))
                 if token is not None:
-                    if b.acted.count(token_key) > 0:
+                    if acted.count(token_decode) > 0:
                         color = ORANGE_COLOR
                     elif token[board.SIDE] == board.RED:
                         color = RED_COLOR
@@ -116,16 +120,12 @@ def draw_tokens():
 def draw_overlay(coordinates):
     # fill the screen with a slight tint and punch hexagons in it corresponding to a unit's turn options
     overlay_surface.fill((0, 0, 0, 32))
+    action_coordinates = client.get_actions(coordinates)
     for x in range(board.X_MAX):
         for y in range(board.Y_MAX):
             # use our newly refactored "can my token do something here" function
-            if b.check_action(coordinates, (x, y)):
+            if action_coordinates.count(board.make_coord_num((x, y))) > 0:
                 pg.draw.polygon(overlay_surface, (0, 0, 0, 0), get_hexagon((x, y)))
-
-
-def init_board():
-    new_b = board.Board()
-    return new_b
 
 
 if __name__ == '__main__':
@@ -133,9 +133,10 @@ if __name__ == '__main__':
     screen = pg.display.set_mode((1280, 480), pg.SCALED)
     pg.display.set_caption("hexbattle")
     pg.mouse.set_visible(True)
+
     if pg.font:
         font = pg.font.Font(None, 64)
-        smallfont = pg.font.Font(None, 32)
+        small_font = pg.font.Font(None, 32)
 
     background = pg.Surface(screen.get_size())
     background = background.convert()
@@ -160,15 +161,22 @@ if __name__ == '__main__':
     state = SELECT
     draw_state_text()
 
-    b = init_board()
+    # get all of our initial state
+    terrain = client.get_terrain()
+    positions = client.get_positions()
+    tokens = client.get_units()
+    acted = client.get_acted()
+    turn = client.get_turn()
+
     tiles = draw_board()
+    draw_tokens()
+
     controls = {}
     clock = pg.time.Clock()
-    draw_tokens()
     screen.blit(token_surface, (0, 0))
 
     if pg.font:
-        restart = smallfont.render(RESTART, True, (32, 32, 32))
+        restart = small_font.render(RESTART, True, (32, 32, 32))
         restart_pos = restart.get_rect(centerx=background.get_width() * 3 / 4, y=96)
         controls[tuple(restart_pos)] = RESTART
         background.blit(restart, restart_pos)
@@ -177,9 +185,9 @@ if __name__ == '__main__':
     while running:
         if pg.font:
             end_turn_color = (32, 32, 32)
-            if b.turn == board.RED:
+            if turn == board.RED:
                 end_turn_color = RED_COLOR
-            elif b.turn == board.BLUE:
+            elif turn == board.BLUE:
                 end_turn_color = BLUE_COLOR
             end_turn_text = font.render(END, True, end_turn_color)
             end_turn_pos = end_turn_text.get_rect(centerx=background.get_width() * 3 / 4,
@@ -196,14 +204,18 @@ if __name__ == '__main__':
                     if control_clicked[1] == END:
                         state = SELECT
                         draw_state_text()
-                        b.finish_turn()
+                        turn = client.post_turn(turn)
+                        acted = client.get_acted()
                         draw_tokens()
                     elif control_clicked[1] == RESTART:
                         state = SELECT
                         draw_state_text()
-                        b = init_board()
+                        client.init_board()
+                        turn = client.get_turn()
+                        positions = client.get_positions()
+                        acted = client.get_acted()
+                        tokens = client.get_units()
                         draw_tokens()
-                        screen.blit(token_surface, (0, 0))
                 if tile_clicked is None:
                     state = SELECT
                     draw_state_text()
@@ -217,7 +229,9 @@ if __name__ == '__main__':
                     token_xy = token_tile[1]
                     action_xy = action_tile[1]
                     # use the refactored "do the thing" method here
-                    b.resolve_action(token_xy, action_xy)
+                    positions = client.post_position(token_xy, action_xy)
+                    tokens = client.get_units()
+                    acted = client.get_acted()
                     draw_tokens()
                     token_tile = None
                     action_tile = None
@@ -231,12 +245,12 @@ if __name__ == '__main__':
                     token_tile = tile_clicked
                     if token_tile is not None:
                         token_xy = token_tile[1]
-                        token_unit_key = b.positions[token_xy[board.COL], token_xy[board.ROW]]
-                        token_unit = b.tokens.get(token_unit_key)
+                        token_unit_key = positions[token_xy[board.COL], token_xy[board.ROW]]
+                        token_unit = tokens.get(token_unit_key.decode('UTF-8'))
                         if token_unit is not None:
                             draw_overlay(token_xy)
 
-            win = b.check_victory()
+            win = client.get_victory()
             if win is not None:
                 state = VICTORY
                 draw_state_text()
