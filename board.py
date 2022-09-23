@@ -74,8 +74,8 @@ class Board:
         self.tokens[b'b3'] = BLUE_SOLDIER.copy()
         self.tokens[b'B1'] = BLUE_TANK.copy()
         self.turn = TURNS[0]
-        for key in self.acted:
-            self.acted.remove(key)
+        while len(self.acted) > 0:
+            self.acted.pop(0)
         self.victory = None
 
     def check_victory(self):

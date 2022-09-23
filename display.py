@@ -77,7 +77,12 @@ def draw_board():
 def draw_state_text():
     text_surface.fill((0, 0, 0))
     if pg.font:
-        text = font.render(state, True, (32, 32, 32))
+        if win == board.RED:
+            text = font.render(VICTORY, True, RED_COLOR)
+        elif win == board.BLUE:
+            text = font.render(VICTORY, True, BLUE_COLOR)
+        else:
+            text = font.render(state, True, (32, 32, 32))
         text_pos = text.get_rect(centerx=background.get_width() * 3 / 4, y=10)
         text_surface.blit(text, text_pos)
 
@@ -158,6 +163,7 @@ if __name__ == '__main__':
 
     token_tile = None
     action_tile = None
+    win = None
     state = SELECT
     draw_state_text()
 
@@ -203,8 +209,8 @@ if __name__ == '__main__':
                 if control_clicked is not None:
                     if control_clicked[1] == END:
                         state = SELECT
-                        draw_state_text()
                         turn = client.post_turn(turn)
+                        win = client.get_victory()
                         acted = client.get_acted()
                         draw_tokens()
                     elif control_clicked[1] == RESTART:
@@ -218,13 +224,11 @@ if __name__ == '__main__':
                         draw_tokens()
                 if tile_clicked is None:
                     state = SELECT
-                    draw_state_text()
                     token_tile = None
                     action_tile = None
                 if token_tile is not None:
                     # this is where we confirm where the piece we've picked is supposed to go or attack
                     state = SELECT
-                    draw_state_text()
                     action_tile = tile_clicked
                     token_xy = token_tile[1]
                     action_xy = action_tile[1]
@@ -241,7 +245,6 @@ if __name__ == '__main__':
                     # this is where we pick up a piece
                     if tile_clicked is not None:
                         state = CONFIRM
-                        draw_state_text()
                     token_tile = tile_clicked
                     if token_tile is not None:
                         token_xy = token_tile[1]
@@ -249,14 +252,14 @@ if __name__ == '__main__':
                         token_unit = tokens.get(token_unit_key.decode('UTF-8'))
                         if token_unit is not None:
                             draw_overlay(token_xy)
+                # every click
 
-            win = client.get_victory()
-            if win is not None:
-                state = VICTORY
-                draw_state_text()
-
+            # every event
             if event.type == pg.QUIT:
                 running = False
+            draw_state_text()
+
+        # every frame
         pygame.display.flip()
         screen.blit(background, (0, 0))
         screen.blit(text_surface, (0, 0))

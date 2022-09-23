@@ -1,6 +1,7 @@
 import requests
+import client
 
-URL = 'http://localhost:5000'
+URL = client.URL
 
 
 def get(path):
