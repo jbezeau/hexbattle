@@ -18,7 +18,7 @@ def post(path, data):
     print(f'Status {response.status_code}, {response.json()}')
 
 
-# testing rest interface exposed by main.py
+# testing rest interface exposed by application.py
 get('/board/reset')
 get('/board/dimensions')
 get('/board/terrain')

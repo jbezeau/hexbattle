@@ -2,29 +2,29 @@ from flask import Flask, request
 import json
 import board
 
-app = Flask(__name__)
+application = Flask(__name__)
 b = board.Board()
 
 
-@app.route('/hexbattle')
+@application.route('/hexbattle')
 def welcome_page():
     return 'Welcome!\n', 200
 
 
-@app.route('/board/reset')
+@application.route('/board/reset')
 def reset():
     b.reset()
     return json.dumps('Reset')+'\n', 202
 
 
-@app.route('/board/dimensions')
+@application.route('/board/dimensions')
 def get_dimensions():
     # functions that output aspects of the map will have sparse output
     # so we need one function to tell clients what the maximum map dimensions are
     return json.dumps([board.X_MAX, board.Y_MAX])+'\n', 200
 
 
-@app.route('/board/terrain')
+@application.route('/board/terrain')
 def get_terrain():
     pos = {}
     status = 200
@@ -37,7 +37,7 @@ def get_terrain():
     return out+'\n', status
 
 
-@app.route('/turn', methods=['GET', 'POST'])
+@application.route('/turn', methods=['GET', 'POST'])
 def end_turn():
     # post data {"side": "Red"} to end turn for Red
     # so an interface acting for Blue can't end Red's turn etc
@@ -52,7 +52,7 @@ def end_turn():
     return json.dumps(b.turn)+'\n', status
 
 
-@app.route('/victory')
+@application.route('/victory')
 def get_victory():
     status = 200
     out = ''
@@ -61,7 +61,7 @@ def get_victory():
     return out+'\n', 200
 
 
-@app.route('/status')
+@application.route('/status')
 def show_units():
     # output the master unit list with current HP and so on
     # convert unit key bytes to strings so JSON can handle it
@@ -73,7 +73,7 @@ def show_units():
     return out+'\n', 200
 
 
-@app.route('/turn/acted')
+@application.route('/turn/acted')
 def show_acted():
     # output list of units that have acted in the turn
     # convert unit key bytes to strings
@@ -83,7 +83,7 @@ def show_acted():
     return json.dumps(str_key_list)+'\n', 200
 
 
-@app.route('/actions', methods=['POST'])
+@application.route('/actions', methods=['POST'])
 def show_valid_moves():
     # previously display would iterate over all positions, asking board if a move was valid
     # we shouldn't be so inefficient with REST requests so this handler does the iteration
@@ -99,7 +99,7 @@ def show_valid_moves():
     return out+'\n', 200
 
 
-@app.route('/positions', methods=['GET', 'POST'])
+@application.route('/positions', methods=['GET', 'POST'])
 def update_positions():
     # player posts a list of [{Start:xxyy, End:xxyy},{...}]
     # we try to take all of those actions in order
@@ -126,5 +126,5 @@ def update_positions():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080)
+    application.run()
 
