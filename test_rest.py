@@ -1,5 +1,5 @@
 import requests
-import client
+import displayclient
 
 URL = client.URL
 
@@ -23,10 +23,10 @@ def post(path, data):
 get('/board/reset')
 get('/board/dimensions')
 get('/board/terrain')
-get('/status')
-get('/victory')
+get('/tokens/status')
+get('/player/victory')
 
-post('/actions', {"hex": 202})
-post('/positions', {"hexes": [{"Start": 202, "End": 402}]})
-get('/turn/acted')
-post('/turn', {"side": "Red"})
+post('/token/actions', {"hex": 202})
+post('/tokens/positions', {202: 402})
+get('/tokens/acted')
+post('/player/turn', {"side": "Red"})

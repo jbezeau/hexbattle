@@ -31,10 +31,9 @@ BLUE_TANK = {TYPE: TANK, HP: 4, MV: 3, ATK: 2, RNG: 4, SIDE: BLUE}
 RED_FLAG = {TYPE: FLAG, HP: 0, MV: 0, SIDE: RED}
 BLUE_FLAG = {TYPE: FLAG, HP: 0, MV: 0, SIDE: BLUE}
 
-# board dimensions
-# 0,0 is bottom left
+# board dimensions, these should not vary from map to map for consistent NNET input layer
 X_MAX = 11
-Y_MAX = 11
+Y_MAX = 17
 TURNS = [RED, BLUE]
 
 
@@ -52,27 +51,27 @@ class Board:
         # use 1 array for each token type, effectively a one-hot encoding of tokens
         # initialize co-ords [0,0] to [X_MAX,Y_MAX]
         self.positions = numpy.full([X_MAX, Y_MAX], '', dtype='S3')
-        self.positions[1, 1] = 'RF'
-        self.positions[2, 2] = 'R1'
-        self.positions[3, 3] = 'r1'
-        self.positions[3, 1] = 'r2'
-        self.positions[2, 4] = 'r3'
-        self.positions[9, 9] = 'BF'
-        self.positions[8, 8] = 'B1'
-        self.positions[7, 7] = 'b1'
-        self.positions[8, 6] = 'b2'
-        self.positions[7, 9] = 'b3'
+        self.positions[1, 3] = 'RF1'
+        self.positions[2, 4] = 'RT1'
+        self.positions[3, 5] = 'R1'
+        self.positions[3, 3] = 'R2'
+        self.positions[2, 6] = 'R3'
+        self.positions[9, 13] = 'BF1'
+        self.positions[8, 12] = 'BT1'
+        self.positions[7, 11] = 'B1'
+        self.positions[8, 10] = 'B2'
+        self.positions[7, 13] = 'B3'
 
-        self.tokens[b'RF'] = RED_FLAG.copy()
-        self.tokens[b'r1'] = RED_SOLDIER.copy()
-        self.tokens[b'r2'] = RED_SOLDIER.copy()
-        self.tokens[b'r3'] = RED_SOLDIER.copy()
-        self.tokens[b'R1'] = RED_TANK.copy()
-        self.tokens[b'BF'] = BLUE_FLAG.copy()
-        self.tokens[b'b1'] = BLUE_SOLDIER.copy()
-        self.tokens[b'b2'] = BLUE_SOLDIER.copy()
-        self.tokens[b'b3'] = BLUE_SOLDIER.copy()
-        self.tokens[b'B1'] = BLUE_TANK.copy()
+        self.tokens[b'RF1'] = RED_FLAG.copy()
+        self.tokens[b'R1'] = RED_SOLDIER.copy()
+        self.tokens[b'R2'] = RED_SOLDIER.copy()
+        self.tokens[b'R3'] = RED_SOLDIER.copy()
+        self.tokens[b'RT1'] = RED_TANK.copy()
+        self.tokens[b'BF1'] = BLUE_FLAG.copy()
+        self.tokens[b'B1'] = BLUE_SOLDIER.copy()
+        self.tokens[b'B2'] = BLUE_SOLDIER.copy()
+        self.tokens[b'B3'] = BLUE_SOLDIER.copy()
+        self.tokens[b'BT1'] = BLUE_TANK.copy()
         self.turn = TURNS[0]
         while len(self.acted) > 0:
             self.acted.pop(0)
@@ -148,7 +147,7 @@ class Board:
         to_token = self.tokens.get(to_key)
         if frm_token is not None and to_token is not None:
             check_range = 2 * frm_token[RNG] + 1 > get_distance(frm, to)
-            check_oppo = frm_token[SIDE] != to_token[SIDE]
+            check_oppo = frm_token[SIDE] != to_token[SIDE] and to_token[TYPE] != FLAG
             return check_range and check_oppo
         return False
 

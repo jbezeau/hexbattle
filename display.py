@@ -1,8 +1,6 @@
 import pygame as pg
-import pygame.display
-
 import board
-import client
+import displayclient
 
 BG_COLOR = (64, 64, 64)
 RED_COLOR = (170, 32, 32)
@@ -19,6 +17,42 @@ VICTORY = 'Victory'
 
 END = 'End Turn'
 RESTART = 'New Game'
+
+
+# global state for display
+pg.init()
+screen = pg.display.set_mode((1280, 640), pg.SCALED)
+pg.display.set_caption("hexbattle")
+pg.mouse.set_visible(True)
+
+if pg.font:
+    font = pg.font.Font(None, 64)
+    small_font = pg.font.Font(None, 32)
+
+background = pg.Surface(screen.get_size())
+background = background.convert()
+background.fill((64, 64, 64))
+
+text_surface = pg.Surface(screen.get_size())
+text_surface = text_surface.convert()
+text_surface.fill((0, 0, 0))
+text_surface.set_colorkey((0, 0, 0))
+
+token_surface = pg.Surface(screen.get_size())
+token_surface = token_surface.convert()
+token_surface.fill((0, 0, 0))
+token_surface.set_colorkey((0, 0, 0))
+
+overlay_surface = pg.Surface(screen.get_size())
+overlay_surface = overlay_surface.convert_alpha()
+overlay_surface.fill((0, 0, 0, 0))
+
+# get all of our initial state
+terrain = client.get_terrain()
+positions = client.get_positions()
+tokens = client.get_units()
+acted = client.get_acted()
+turn = client.get_turn()
 
 
 def get_scaled_coordinates(coordinates):
@@ -83,7 +117,7 @@ def draw_state_text():
             text = font.render(VICTORY, True, BLUE_COLOR)
         else:
             text = font.render(state, True, (32, 32, 32))
-        text_pos = text.get_rect(centerx=background.get_width() * 3 / 4, y=10)
+        text_pos = text.get_rect(centerx=3 * background.get_width() / 4, centery=background.get_height() / 4)
         text_surface.blit(text, text_pos)
 
 
@@ -133,33 +167,14 @@ def draw_overlay(coordinates):
                 pg.draw.polygon(overlay_surface, (0, 0, 0, 0), get_hexagon((x, y)))
 
 
+def draw_to_screen():
+    pg.display.flip()
+    screen.blit(background, (0, 0))
+    screen.blit(text_surface, (0, 0))
+    screen.blit(token_surface, (0, 0))
+
+
 if __name__ == '__main__':
-    pg.init()
-    screen = pg.display.set_mode((1280, 480), pg.SCALED)
-    pg.display.set_caption("hexbattle")
-    pg.mouse.set_visible(True)
-
-    if pg.font:
-        font = pg.font.Font(None, 64)
-        small_font = pg.font.Font(None, 32)
-
-    background = pg.Surface(screen.get_size())
-    background = background.convert()
-    background.fill((64, 64, 64))
-
-    text_surface = pg.Surface(screen.get_size())
-    text_surface = text_surface.convert()
-    text_surface.fill((0, 0, 0))
-    text_surface.set_colorkey((0, 0, 0))
-
-    token_surface = pg.Surface(screen.get_size())
-    token_surface = token_surface.convert()
-    token_surface.fill((0, 0, 0))
-    token_surface.set_colorkey((0, 0, 0))
-
-    overlay_surface = pg.Surface(screen.get_size())
-    overlay_surface = overlay_surface.convert_alpha()
-    overlay_surface.fill((0, 0, 0, 0))
 
     token_tile = None
     action_tile = None
@@ -167,23 +182,15 @@ if __name__ == '__main__':
     state = SELECT
     draw_state_text()
 
-    # get all of our initial state
-    terrain = client.get_terrain()
-    positions = client.get_positions()
-    tokens = client.get_units()
-    acted = client.get_acted()
-    turn = client.get_turn()
-
     tiles = draw_board()
     draw_tokens()
 
     controls = {}
     clock = pg.time.Clock()
-    screen.blit(token_surface, (0, 0))
 
     if pg.font:
         restart = small_font.render(RESTART, True, (32, 32, 32))
-        restart_pos = restart.get_rect(centerx=background.get_width() * 3 / 4, y=96)
+        restart_pos = restart.get_rect(centerx=3 * background.get_width() / 4, centery=64+(background.get_height() / 4))
         controls[tuple(restart_pos)] = RESTART
         background.blit(restart, restart_pos)
 
@@ -260,10 +267,7 @@ if __name__ == '__main__':
             draw_state_text()
 
         # every frame
-        pygame.display.flip()
-        screen.blit(background, (0, 0))
-        screen.blit(text_surface, (0, 0))
-        screen.blit(token_surface, (0, 0))
+        draw_to_screen()
         if state == CONFIRM:
             screen.blit(overlay_surface, (0, 0))
     pg.quit()
