@@ -2,7 +2,7 @@ import pygame as pg
 
 import board
 import display
-import editclient
+import restclient
 
 
 class EditControls:
@@ -14,17 +14,15 @@ class EditControls:
     UNIT_TANK = 'Tank'
     UNIT_SOLDIER = 'Soldier'
     UNIT_CLEAR = 'Remove'
-    UNIT_COLOR = 'Unit Color'
-    UNIT_COLOR_RED = 'Red'
-    UNIT_COLOR_BLUE = 'Blue'
+    UNIT_COLOR = 'Token Color'
     DONE = 'Finished Editing'
     SAVE = 'Save Map'
     RESET = 'Reset Board'
     MENU_MAIN = [TERRAIN_EDIT, UNIT_PLACE, DONE]
     MENU_TERRAIN = [TERRAIN_RAISE, TERRAIN_LOWER]
     MENU_UNIT = [UNIT_SOLDIER, UNIT_TANK, UNIT_FLAG, UNIT_CLEAR, UNIT_COLOR]
-    MENU_UNIT_COLOR = [UNIT_COLOR_RED, UNIT_COLOR_BLUE]
     MENU_DONE = [SAVE, RESET]
+    COLOR_LIST = [board.RED, board.BLUE]
 
 
 def new_unit():
@@ -126,25 +124,23 @@ if __name__ == '__main__':
                         case EditControls.UNIT_FLAG:
                             action = EditControls.UNIT_FLAG
                         case EditControls.UNIT_COLOR:
-                            menu = EditControls.MENU_UNIT_COLOR
-                        case EditControls.UNIT_COLOR_RED:
-                            unit_color = board.RED
-                            menu = EditControls.MENU_UNIT
-                        case EditControls.UNIT_COLOR_BLUE:
-                            unit_color = board.BLUE
-                            menu = EditControls.MENU_UNIT
+                            # use same logic as rotating through player turns
+                            unit_color = board.next_color(unit_color)
 
                         case EditControls.DONE:
                             menu = EditControls.MENU_DONE
                         case EditControls.SAVE:
-                            terrain = editclient.save_terrain(display.terrain)
-                            editclient.save_status(display.tokens)
-                            editclient.save_positions(display.positions)
+                            display.terrain = restclient.save_terrain(display.terrain)
+                            display.tokens = restclient.save_status(display.tokens)
+                            display.positions = restclient.save_positions(display.positions)
+                            display.draw_board()
+                            display.draw_tokens()
+                            restclient.save_commit()
                         case EditControls.RESET:
-                            editclient.init_board()
-                            display.terrain = editclient.get_terrain()
-                            display.positions = editclient.get_positions()
-                            display.tokens = editclient.get_units()
+                            restclient.init_board()
+                            display.terrain = restclient.get_terrain()
+                            display.positions = restclient.get_positions()
+                            display.tokens = restclient.get_units()
                             display.draw_tokens()
                             display.draw_board()
                         case _:

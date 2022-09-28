@@ -1,6 +1,6 @@
 import pygame as pg
 import board
-import displayclient
+import restclient
 
 BG_COLOR = (64, 64, 64)
 RED_COLOR = (170, 32, 32)
@@ -48,11 +48,11 @@ overlay_surface = overlay_surface.convert_alpha()
 overlay_surface.fill((0, 0, 0, 0))
 
 # get all of our initial state
-terrain = client.get_terrain()
-positions = client.get_positions()
-tokens = client.get_units()
-acted = client.get_acted()
-turn = client.get_turn()
+terrain = restclient.get_terrain()
+positions = restclient.get_positions()
+tokens = restclient.get_units()
+acted = restclient.get_acted()
+turn = restclient.get_turn()
 
 
 def get_scaled_coordinates(coordinates):
@@ -159,7 +159,7 @@ def draw_tokens():
 def draw_overlay(coordinates):
     # fill the screen with a slight tint and punch hexagons in it corresponding to a unit's turn options
     overlay_surface.fill((0, 0, 0, 32))
-    action_coordinates = client.get_actions(coordinates)
+    action_coordinates = restclient.get_actions(coordinates)
     for x in range(board.X_MAX):
         for y in range(board.Y_MAX):
             # use our newly refactored "can my token do something here" function
@@ -216,18 +216,18 @@ if __name__ == '__main__':
                 if control_clicked is not None:
                     if control_clicked[1] == END:
                         state = SELECT
-                        turn = client.post_turn(turn)
-                        win = client.get_victory()
-                        acted = client.get_acted()
+                        turn = restclient.post_turn(turn)
+                        win = restclient.get_victory()
+                        acted = restclient.get_acted()
                         draw_tokens()
                     elif control_clicked[1] == RESTART:
                         state = SELECT
                         draw_state_text()
-                        client.init_board()
-                        turn = client.get_turn()
-                        positions = client.get_positions()
-                        acted = client.get_acted()
-                        tokens = client.get_units()
+                        restclient.init_board()
+                        turn = restclient.get_turn()
+                        positions = restclient.get_positions()
+                        acted = restclient.get_acted()
+                        tokens = restclient.get_units()
                         draw_tokens()
                 if tile_clicked is None:
                     state = SELECT
@@ -240,9 +240,9 @@ if __name__ == '__main__':
                     token_xy = token_tile[1]
                     action_xy = action_tile[1]
                     # use the refactored "do the thing" method here
-                    positions = client.post_position(token_xy, action_xy)
-                    tokens = client.get_units()
-                    acted = client.get_acted()
+                    positions = restclient.post_position(token_xy, action_xy)
+                    tokens = restclient.get_units()
+                    acted = restclient.get_acted()
                     draw_tokens()
                     token_tile = None
                     action_tile = None

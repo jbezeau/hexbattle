@@ -1,5 +1,5 @@
 import requests
-import displayclient
+import restclient
 
 URL = client.URL
 

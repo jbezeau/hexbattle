@@ -6,31 +6,6 @@ application = Flask(__name__)
 b = board.Board()
 
 
-def output_terrain():
-    # return state of the board in the form {xxyy: terrain elevation, ...}
-    pos = {}
-    status = 200
-    for x in range(board.X_MAX):
-        for y in range(board.Y_MAX):
-            elevation = b.terrain[x, y]
-            if elevation != 0:
-                pos[board.make_coord_num((x, y))] = elevation
-    return json.dumps(pos)
-
-
-def output_positions():
-    # return state of the board in the form {xxyy: unit_id,...}
-    pos = {}
-    for x in range(board.X_MAX):
-        for y in range(board.Y_MAX):
-            unit = b.positions[x, y]
-            if unit != b'':
-                val = unit.decode("UTF-8")
-                # convert (x, y) coordinate to xxyy digits
-                pos[board.make_coord_num((x, y))] = val
-    return json.dumps(pos)
-
-
 @application.route('/hexbattle')
 def welcome_page():
     return 'Welcome!\n', 200
@@ -51,7 +26,7 @@ def get_dimensions():
 
 @application.route('/board/terrain')
 def get_terrain():
-    return output_terrain()+'\n', 200
+    return b.output_terrain() + '\n', 200
 
 
 @application.route('/player/turn', methods=['GET', 'POST'])
@@ -72,7 +47,7 @@ def end_turn():
 @application.route('/player/victory')
 def get_victory():
     status = 200
-    out = ''
+    out = 'None'
     if b.victory is not None:
         out = json.dumps(b.victory)
     return out+'\n', 200
@@ -80,14 +55,7 @@ def get_victory():
 
 @application.route('/tokens/status')
 def show_units():
-    # output the master unit list with current HP and so on
-    # convert unit key bytes to strings so JSON can handle it
-    str_key_dict = {}
-    for key in b.tokens:
-        str_key = key.decode("UTF-8")
-        str_key_dict[str_key] = b.tokens[key]
-    out = json.dumps(str_key_dict)
-    return out+'\n', 200
+    return b.output_units() + '\n', 200
 
 
 @application.route('/tokens/acted')
@@ -127,8 +95,7 @@ def update_positions():
             hex_num = int(hex_key)
             b.resolve_action(board.make_coord_tuple(hex_num), board.make_coord_tuple(moves[hex_key]))
         status = 201
-
-    return output_positions()+'\n', status
+    return b.output_positions() + '\n', status
 
 
 @application.route('/edit/terrain', methods=['POST'])
@@ -139,14 +106,7 @@ def edit_terrain():
         hex_num = int(hex_key)
         x, y = board.make_coord_tuple(hex_num)
         b.terrain[x, y] = terrains[hex_key]
-    out_terrain = []
-    for x in board.X_MAX:
-        for y in board.Y_MAX:
-            if b.terrain[x, y] != 0:
-                hex_num = board.make_coord_num((x, y))
-                out_terrain[hex_num] = b.terrain[x, y]
-    out = json.dumps(out_terrain)
-    return out+'\n', 201
+    return b.output_terrain() + '\n', 201
 
 
 @application.route('/edit/positions', methods=['POST'])
@@ -157,7 +117,7 @@ def edit_positions():
         hex_num = int(hex_key)
         x, y = board.make_coord_tuple(hex_num)
         b.positions[x, y] = positions[hex_key]
-    return output_positions()+'\n', 201
+    return b.output_positions() + '\n', 201
 
 
 @application.route('/edit/status', methods=['POST'])
@@ -167,8 +127,14 @@ def edit_units():
     # I like the thought of not having to re-specify the flags and tanks
     units = request.get_json()
     for token in units:
-        b.tokens[token] = units[token]
-    return json.dumps(b.tokens)+'\n', 201
+        b.tokens[token.encode('UTF-8')] = units[token]
+    return b.output_units() + '\n', 201
+
+
+@application.route('/edit/save')
+def commit_edit():
+    config_num = b.save_config()
+    return json.dumps({'config': config_num})+'\n', 201
 
 
 if __name__ == '__main__':

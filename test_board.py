@@ -98,3 +98,9 @@ print(f'Check blue soldier {b.tokens.get("b1")}')
 b.finish_turn()
 print(f'Shoot red soldier with blue tank {b.check_action((1, 5), (3, 5))}')
 print(f'Check red soldier {b.tokens.get("r1")}')
+
+# exercise database stuff
+config_id = b.save_config()
+print(f'Saved board as config {config_id}')
+b.reset()
+b.delete_config()
