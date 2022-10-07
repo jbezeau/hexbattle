@@ -130,9 +130,11 @@ if __name__ == '__main__':
                 if event.key == pg.K_BACKSPACE:
                     # get text input from 0 to -1 i.e. end.
                     player_id = player_id[:-1]
-                else:
+                elif pg.K_z >= event.key >= pg.K_9:
                     # add unicode character
+                    # bind to text chars and crop to 50
                     player_id += event.unicode
+                    player_id = player_id[:50]
                 draw_id_input(player_id)
 
             # every event

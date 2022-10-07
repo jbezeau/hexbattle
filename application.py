@@ -158,9 +158,14 @@ def session_join():
 
 @application.route('/session/create', methods=['POST'])
 def session_create():
+    # quick length limit on player ID, same as UI
+    # strings have a built-in test for alphanumeric character content
     player_id = request.get_json()
-    session_id = b.create_session(player_id)
-    return json.dumps(session_id)+'\n', 201
+    if player_id.isalnum():
+        session_id = b.create_session(player_id[50:])
+        return json.dumps(session_id)+'\n', 201
+    else:
+        return json.dumps(player_id), 403
 
 
 @application.route('/board/list')
