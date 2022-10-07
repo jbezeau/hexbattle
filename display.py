@@ -22,7 +22,6 @@ RESTART = 'New Game'
 # global state for display
 pg.init()
 screen = pg.display.set_mode((1280, 640), pg.SCALED)
-pg.display.set_caption("hexbattle")
 pg.mouse.set_visible(True)
 
 if pg.font:
@@ -47,12 +46,12 @@ overlay_surface = pg.Surface(screen.get_size())
 overlay_surface = overlay_surface.convert_alpha()
 overlay_surface.fill((0, 0, 0, 0))
 
-# get all of our initial state
-terrain = restclient.get_terrain()
-positions = restclient.get_positions()
-tokens = restclient.get_units()
-acted = restclient.get_acted()
-turn = restclient.get_turn()
+
+def clear():
+    background.fill((64, 64, 64))
+    token_surface.fill((0, 0, 0))
+    text_surface.fill((0, 0, 0))
+    overlay_surface.fill((0, 0, 0, 0))
 
 
 def get_scaled_coordinates(coordinates):
@@ -61,7 +60,7 @@ def get_scaled_coordinates(coordinates):
     return [hx, hy]
 
 
-def get_elevation_color(coordinates):
+def get_elevation_color(terrain, coordinates):
     elevation = terrain[coordinates[board.COL], coordinates[board.ROW]]
     greyscale = min(255, 32*elevation + 128)
     grey_tuple = (greyscale, greyscale, greyscale)
@@ -97,18 +96,18 @@ def get_hexagon(coordinates):
             (x+5*SCALE, y), (x+3*SCALE, y+4*SCALE), (x-3*SCALE, y+4*SCALE))
 
 
-def draw_board():
+def draw_board(terrain):
     new_tiles = {}
     for x in range(board.X_MAX):
         for y in range(board.Y_MAX):
             if board.check_pos((x, y)):
-                tile = pg.draw.polygon(background, get_elevation_color((x, y)), get_hexagon((x, y)))
+                tile = pg.draw.polygon(background, get_elevation_color(terrain, (x, y)), get_hexagon((x, y)))
                 pg.draw.polygon(background, BG_COLOR, get_hexagon((x, y)), 4)
                 new_tiles[tuple(tile)] = (x, y)
     return new_tiles
 
 
-def draw_state_text():
+def draw_state_text(win, state):
     text_surface.fill((0, 0, 0))
     if pg.font:
         if win == board.RED:
@@ -121,7 +120,7 @@ def draw_state_text():
         text_surface.blit(text, text_pos)
 
 
-def draw_tokens():
+def draw_tokens(positions, tokens, acted=[]):
     token_surface.fill((0, 0, 0))
     for x in range(board.X_MAX):
         for y in range(board.Y_MAX):
@@ -131,7 +130,6 @@ def draw_tokens():
                 token_key = positions[x, y]
                 token_decode = token_key.decode('UTF-8')
                 token = tokens.get(token_decode)
-                health = 0
                 color = ORANGE_COLOR
                 shape = get_pentagon((x, y))
                 if token is not None:
@@ -174,19 +172,25 @@ def draw_to_screen():
     screen.blit(token_surface, (0, 0))
 
 
-if __name__ == '__main__':
-
+def play_loop():
+    clock = pg.time.Clock()
+    pg.display.set_caption("hexbattle")
     token_tile = None
     action_tile = None
     win = None
     state = SELECT
-    draw_state_text()
-
-    tiles = draw_board()
-    draw_tokens()
-
     controls = {}
-    clock = pg.time.Clock()
+
+    # get all of our initial state
+    terrain = restclient.get_terrain()
+    positions = restclient.get_positions()
+    tokens = restclient.get_units()
+    acted = restclient.get_acted()
+    turn = restclient.get_turn()
+
+    tiles = draw_board(terrain)
+    draw_state_text(win, state)
+    draw_tokens(positions, tokens, acted)
 
     if pg.font:
         restart = small_font.render(RESTART, True, (32, 32, 32))
@@ -219,16 +223,16 @@ if __name__ == '__main__':
                         turn = restclient.post_turn(turn)
                         win = restclient.get_victory()
                         acted = restclient.get_acted()
-                        draw_tokens()
+                        draw_tokens(positions, tokens, acted)
                     elif control_clicked[1] == RESTART:
                         state = SELECT
-                        draw_state_text()
+                        draw_state_text(win, state)
                         restclient.init_board()
                         turn = restclient.get_turn()
                         positions = restclient.get_positions()
                         acted = restclient.get_acted()
                         tokens = restclient.get_units()
-                        draw_tokens()
+                        draw_tokens(positions, tokens, acted)
                 if tile_clicked is None:
                     state = SELECT
                     token_tile = None
@@ -240,10 +244,10 @@ if __name__ == '__main__':
                     token_xy = token_tile[1]
                     action_xy = action_tile[1]
                     # use the refactored "do the thing" method here
-                    positions = restclient.post_position(token_xy, action_xy)
+                    positions = restclient.post_position(list(token_xy), list(action_xy))
                     tokens = restclient.get_units()
                     acted = restclient.get_acted()
-                    draw_tokens()
+                    draw_tokens(positions, tokens, acted)
                     token_tile = None
                     action_tile = None
                     token_xy = None
@@ -264,10 +268,16 @@ if __name__ == '__main__':
             # every event
             if event.type == pg.QUIT:
                 running = False
-            draw_state_text()
+            draw_state_text(win, state)
 
         # every frame
         draw_to_screen()
         if state == CONFIRM:
             screen.blit(overlay_surface, (0, 0))
+    # exit game to session launcher
+    clear()
+
+
+if __name__ == '__main__':
+    play_loop()
     pg.quit()

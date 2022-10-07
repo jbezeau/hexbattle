@@ -44,10 +44,14 @@ class Board:
         self.terrain = None
         self.positions = None
         self.tokens = {}
-        self.config_id = config
         self.turn = None
         self.acted = []
+        self.turn_summary = []
         self.victory = None
+        # time to connect to data
+        self.config_id = config
+        self.session_id = None
+        self.database = dbconnect.DBConnection()
         self.reset()
 
     def reset(self):
@@ -80,18 +84,24 @@ class Board:
         self.turn = TURNS[0]
         while len(self.acted) > 0:
             self.acted.pop(0)
+        while len(self.turn_summary) > 0:
+            self.turn_summary.pop(0)
+        self.turn_summary
         self.victory = None
 
     def save_config(self):
         # board config_id represents which saved state the game initializes to
-        self.config_id = dbconnect.save_board(self.output_terrain(), self.output_positions(), self.output_units())
+        self.config_id = self.database.save_board(self.output_terrain(), self.output_positions(), self.output_units())
         return self.config_id
+
+    def list_configs(self):
+        return self.database.list_boards()
 
     def load_config(self, config_id):
         # get board configuration by number
         # apply those settings to the map and tokens
         load = False
-        config = dbconnect.load_board(config_id)
+        config = self.database.load_board(config_id)
         if config is not None:
             terrain_config = json.loads(config[0])
             position_config = json.loads(config[1])
@@ -105,10 +115,23 @@ class Board:
             for token_id, token_stats in token_config.items():
                 self.tokens[token_id.encode("UTF-8")] = token_stats
             load = True
+            self.config_id = config_id
         return load
 
     def delete_config(self):
-        dbconnect.delete_board(self.config_id)
+        self.database.delete_board(self.config_id)
+
+    def list_sessions(self, player_id):
+        return self.database.list_sessions(player_id)
+
+    def join_session(self, player_id=None):
+        self.config_id = self.session_id = self.database.join_session(player_id)
+        self.load_config(self.config_id)
+
+    def create_session(self, player_id):
+        # inserts session record and sets session_id value
+        # we've already loaded the related ID
+        return self.database.create_session(self.config_id, player_id)
 
     def check_victory(self):
         return self.victory
@@ -144,8 +167,10 @@ class Board:
             # otherwise, pass turn to next side with units to play
             if self.turn == next_turn:
                 self.victory = self.turn
+                self.database.close_session()
             else:
                 self.turn = next_turn
+                self.database.post_turn(self.output_turn_actions(), self.output_positions(), self.output_units())
 
             self.acted = []
             return self.turn
@@ -228,8 +253,8 @@ class Board:
                             unit = self.tokens[key]
                             if unit[SIDE] == captured_side:
                                 unit[SIDE] = frm_token[SIDE]
-
             self.acted.append(frm_key)
+            self.turn_summary.append([make_coord_num(frm), make_coord_num(to)])
             return True
 
         if self.check_shoot(frm, to):
@@ -238,7 +263,9 @@ class Board:
             if to_token[HP] < 1:
                 self.positions[to[COL], to[ROW]] = ''
             self.acted.append(frm_key)
+            self.turn_summary.append([make_coord_num(frm), make_coord_num(to)])
             return True
+
         return False
 
     def get_path(self, frm, to):
@@ -382,6 +409,10 @@ class Board:
             str_key = key.decode("UTF-8")
             str_key_dict[str_key] = self.tokens[key]
         return json.dumps(str_key_dict)
+
+    def output_turn_actions(self):
+        # serialize which actions were taken in the player turn
+        return json.dumps(self.turn_summary)
 
 
 def make_coord_num(tpl):

@@ -1,7 +1,7 @@
 import requests
 import restclient
 
-URL = client.URL
+URL = restclient.URL
 
 
 def get(path):

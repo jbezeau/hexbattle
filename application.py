@@ -37,8 +37,9 @@ def end_turn():
     # TODO generate a one-time token the interface uses to validate /turn posts
     status = 200
     if request.method == 'POST':
-        post = request.get_json()
-        if post["side"] == b.turn:
+        turn_txt = request.get_json()
+        turn = json.loads(turn_txt)
+        if turn.get('side') == b.turn:
             b.finish_turn()
             status = 201
     return json.dumps(b.turn)+'\n', status
@@ -47,9 +48,11 @@ def end_turn():
 @application.route('/player/victory')
 def get_victory():
     status = 200
-    out = 'None'
+    out = None
     if b.victory is not None:
         out = json.dumps(b.victory)
+    else:
+        out = json.dumps('None')
     return out+'\n', 200
 
 
@@ -135,6 +138,42 @@ def edit_units():
 def commit_edit():
     config_num = b.save_config()
     return json.dumps({'config': config_num})+'\n', 201
+
+
+@application.route('/session/list', methods=['GET', 'POST'])
+def session_list():
+    player_id = None
+    if request.method == 'POST':
+        player_id = request.get_json()
+    rows = b.list_sessions(player_id)
+    return json.dumps(rows)+'\n', 200
+
+
+@application.route('/session/join', methods=['POST'])
+def session_join():
+    session_id = request.get_json()
+    b.session_id = session_id
+    return json.dumps(True)+'\n', 201
+
+
+@application.route('/session/create', methods=['POST'])
+def session_create():
+    player_id = request.get_json()
+    session_id = b.create_session(player_id)
+    return json.dumps(session_id)+'\n', 201
+
+
+@application.route('/board/list')
+def config_list():
+    rows = b.list_configs()
+    return json.dumps(rows)+'\n', 200
+
+
+@application.route('/board/load', methods=['POST'])
+def config_load():
+    config_id = request.get_json()
+    new_config = b.load_config(config_id)
+    return json.dumps(new_config)+'\n', 202
 
 
 if __name__ == '__main__':

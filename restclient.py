@@ -1,7 +1,8 @@
+import json
+import time
 import numpy
 import requests
 import board
-import time
 
 URL = 'http://localhost:5000'
 # URL = 'http://hexbattle-env.eba-c7dstjkp.us-east-1.elasticbeanstalk.com'
@@ -19,6 +20,12 @@ SAVE_TERRAIN_PATH = '/edit/terrain'
 SAVE_POSITIONS_PATH = '/edit/positions'
 SAVE_STATUS_PATH = '/edit/status'
 SAVE_COMMIT = '/edit/save'
+
+SESSION_LIST_PATH = '/session/list'
+SESSION_JOIN_PATH = '/session/join'
+SESSION_CREATE_PATH = '/session/create'
+BOARD_LIST_PATH = '/board/list'
+BOARD_LOAD_PATH = '/board/load'
 
 
 def _fill_terrain(terrain_data):
@@ -82,7 +89,9 @@ def get_victory():
 
 
 def post_turn(color):
-    return _post(TURN_PATH, color)
+    update = {'side': color}
+    body = json.dumps(update)
+    return _post(TURN_PATH, body)
 
 
 def get_acted():
@@ -141,3 +150,29 @@ def save_status(status):
 
 def save_commit():
     return _get(SAVE_COMMIT)
+
+
+def get_sessions(player_id):
+    if len(player_id) > 0:
+        return _post(SESSION_LIST_PATH, player_id)
+    else:
+        return _get(SESSION_LIST_PATH)
+
+
+def join_session(session_id):
+    # join a numerical id
+    return _post(SESSION_JOIN_PATH, session_id)
+
+
+def start_session(player_id):
+    # start a new session using your player_id
+    return _post(SESSION_CREATE_PATH, player_id)
+
+
+def get_configs():
+    return _get(BOARD_LIST_PATH)
+
+
+def load_config(board_id):
+    config_data = _post(BOARD_LOAD_PATH, board_id)
+    return config_data
