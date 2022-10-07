@@ -91,47 +91,59 @@ class Board:
 
     def save_config(self):
         # board config_id represents which saved state the game initializes to
-        self.config_id = self.database.save_board(self.output_terrain(), self.output_positions(), self.output_units())
+        if self.database.enable:
+            self.config_id = self.database.save_board(self.output_terrain(), self.output_positions(), self.output_units())
         return self.config_id
 
     def list_configs(self):
-        return self.database.list_boards()
+        # force attempt to connect with database connection
+        if self.database.enable:
+            return self.database.list_boards()
+        else:
+            return None
 
     def load_config(self, config_id):
         # get board configuration by number
         # apply those settings to the map and tokens
         load = False
-        config = self.database.load_board(config_id)
-        if config is not None:
-            terrain_config = json.loads(config[0])
-            position_config = json.loads(config[1])
-            token_config = json.loads(config[2])
-            for terrain_num, elevation in terrain_config.items():
-                terrain_coords = make_coord_tuple(int(terrain_num))
-                self.terrain[terrain_coords[COL], terrain_coords[ROW]] = int(elevation)
-            for position_num, token_id in position_config.items():
-                position_coords = make_coord_tuple(int(position_num))
-                self.positions[position_coords[COL], position_coords[ROW]] = token_id.encode('UTF-8')
-            for token_id, token_stats in token_config.items():
-                self.tokens[token_id.encode("UTF-8")] = token_stats
-            load = True
-            self.config_id = config_id
+        if self.database.enable:
+            config = self.database.load_board(config_id)
+            if config is not None:
+                terrain_config = json.loads(config[0])
+                position_config = json.loads(config[1])
+                token_config = json.loads(config[2])
+                for terrain_num, elevation in terrain_config.items():
+                    terrain_coords = make_coord_tuple(int(terrain_num))
+                    self.terrain[terrain_coords[COL], terrain_coords[ROW]] = int(elevation)
+                for position_num, token_id in position_config.items():
+                    position_coords = make_coord_tuple(int(position_num))
+                    self.positions[position_coords[COL], position_coords[ROW]] = token_id.encode('UTF-8')
+                for token_id, token_stats in token_config.items():
+                    self.tokens[token_id.encode("UTF-8")] = token_stats
+                load = True
+                self.config_id = config_id
         return load
 
     def delete_config(self):
-        self.database.delete_board(self.config_id)
+        if self.database.enable:
+            self.database.delete_board(self.config_id)
 
     def list_sessions(self, player_id):
-        return self.database.list_sessions(player_id)
+        if self.database.enable:
+            return self.database.list_sessions(player_id)
+        else:
+            return None
 
     def join_session(self, player_id=None):
-        self.config_id = self.session_id = self.database.join_session(player_id)
-        self.load_config(self.config_id)
+        if self.database.enable:
+            self.config_id = self.session_id = self.database.join_session(player_id)
+            self.load_config(self.config_id)
 
     def create_session(self, player_id):
         # inserts session record and sets session_id value
         # we've already loaded the related ID
-        return self.database.create_session(self.config_id, player_id)
+        if self.database.enable:
+            return self.database.create_session(self.config_id, player_id)
 
     def check_victory(self):
         return self.victory
@@ -167,10 +179,12 @@ class Board:
             # otherwise, pass turn to next side with units to play
             if self.turn == next_turn:
                 self.victory = self.turn
-                self.database.close_session()
+                if self.database.enable:
+                    self.database.close_session()
             else:
                 self.turn = next_turn
-                self.database.post_turn(self.output_turn_actions(), self.output_positions(), self.output_units())
+                if self.database.enable:
+                    self.database.post_turn(self.output_turn_actions(), self.output_positions(), self.output_units())
 
             self.acted = []
             return self.turn

@@ -99,13 +99,15 @@ if __name__ == '__main__':
                         case SessionControls.LIST:
                             menu = SessionControls.MENU_SESSION
                             sessions = restclient.get_sessions(player_id)
-                            selectable = draw_selections(sessions)
+                            if sessions:
+                                selectable = draw_selections(sessions)
                         case SessionControls.JOIN:
                             restclient.join_session(player_id)
                         case SessionControls.CONFIG:
                             menu = SessionControls.MENU_START
                             configs = restclient.get_configs()
-                            selectable = draw_selections(configs)
+                            if configs:
+                                selectable = draw_selections(configs)
                         case SessionControls.START:
                             restclient.start_session(player_id)
                             display.play_loop()

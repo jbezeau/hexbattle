@@ -85,8 +85,8 @@ def edit_loop():
                             terrain = restclient.get_terrain()
                             positions = restclient.get_positions()
                             tokens = restclient.get_units()
-                            display.draw_tokens(terrain)
-                            display.draw_board(positions, tokens)
+                            display.draw_board(terrain)
+                            display.draw_tokens(positions, tokens)
                         case _:
                             menu = EditControls.MENU_MAIN
                     controls = draw_controls(menu, unit_color)

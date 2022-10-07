@@ -1,4 +1,5 @@
 import mysql.connector
+import mysql.connector.errors as err
 
 USER = 'hexbattle'
 PASS = 'h3xBATTLE'
@@ -9,12 +10,19 @@ DB = 'hexbattle'
 class DBConnection:
     # maintain a database connection, and re-open it whenever it times out
     # maintain a game session ID when playing, so we can post turns to the database
-    _cnx = None
-    _session_id = None
+    def __init__(self):
+        self._cnx = None
+        self._session_id = None
+        self.enable = True
 
     def _connect(self):
-        if self._cnx is None or self._cnx.is_connected() is not True:
-            self._cnx = mysql.connector.connect(user=USER, password=PASS, host=HOST, database=DB)
+        try:
+            if self._cnx is None or self._cnx.is_connected() is not True:
+                self._cnx = mysql.connector.connect(user=USER, password=PASS, host=HOST, database=DB)
+                self.enable = True
+        except err.DatabaseError:
+            self._cnx = None
+            self.enable = False
         return self._cnx
 
     def save_board(self, terrain_json, positions_json, units_json):
@@ -41,17 +49,19 @@ class DBConnection:
 
     def load_board(self, config_id):
         cnx = self._connect()
-        cursor = cnx.cursor()
-        sql = 'SELECT TERRAIN, POSITIONS, UNITS FROM game_config WHERE ID = %s'
-        binds = (config_id,)
-        cursor.execute(sql, binds)
-
-        # there can be only one
-        row = cursor.fetchone()
-        if row is not None:
-            return row
-        cursor.close()
-        cnx.commit()
+        # connect failure disables database functionality
+        # game will revert to default board, no session, no turn saving
+        if self.enable:
+            cursor = cnx.cursor()
+            sql = 'SELECT TERRAIN, POSITIONS, UNITS FROM game_config WHERE ID = %s'
+            binds = (config_id,)
+            cursor.execute(sql, binds)
+    
+            # there can be only one
+            row = cursor.fetchone()
+            cursor.close()
+            if row is not None:
+                return row
         return None
 
     def delete_board(self, config_id):
@@ -95,7 +105,9 @@ class DBConnection:
         # choosing not to bake too much logic into this one function: if it doesn't join a session it returns None
         cnx = self._connect()
         cursor = cnx.cursor()
-        sql = "SELECT MAX(ID) FROM game_session WHERE STATUS = 'OPEN' AND player_id = %s"
+        sql = "SELECT MAX(ID), config_id FROM game_session " \
+              "WHERE STATUS = 'OPEN' AND player_id = %s " \
+              "GROUP BY ID, config_id"
         binds = (player_id,)
         cursor.execute(sql, binds)
         row = cursor.fetchone()
