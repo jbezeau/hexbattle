@@ -1,10 +1,26 @@
 import mysql.connector
 import mysql.connector.errors as err
+import os
 
-USER = 'hexbattle'
-PASS = 'h3xBATTLE'
-HOST = '127.0.0.1'
-DB = 'hexbattle'
+if 'RDS_HOSTNAME' in os.environ:
+    DATABASES = {
+        'default': {
+            'NAME': os.environ['RDS_DB_NAME'],
+            'USER': os.environ['RDS_USERNAME'],
+            'PASSWORD': os.environ['RDS_PASSWORD'],
+            'HOST': os.environ['RDS_HOSTNAME'],
+            'PORT': os.environ['RDS_PORT'],
+        }
+    }
+else:
+    DATABASES = {
+        'default': {
+            'NAME': 'hexbattle',
+            'USER': 'hexbattle',
+            'PASSWORD': 'h3xBATTLE',
+            'HOST': '127.0.0.1',
+        }
+    }
 
 
 class DBConnection:
@@ -18,7 +34,17 @@ class DBConnection:
     def _connect(self):
         try:
             if self._cnx is None or self._cnx.is_connected() is not True:
-                self._cnx = mysql.connector.connect(user=USER, password=PASS, host=HOST, database=DB)
+                user = DATABASES['default'].get('USER')
+                password = DATABASES['default'].get('PASSWORD')
+                host = DATABASES['default'].get('HOST')
+                port = DATABASES['default'].get('PORT')
+                name = DATABASES['default'].get('NAME')
+                if port is not None:
+                    self._cnx = mysql.connector.connect(
+                        user=user, password=password, host=host, port=port, database=name)
+                else:
+                    self._cnx = mysql.connector.connect(
+                        user=user, password=password, host=host, database=name)
                 self.enable = True
         except err.DatabaseError:
             self._cnx = None
