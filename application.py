@@ -162,7 +162,7 @@ def session_create():
     # strings have a built-in test for alphanumeric character content
     player_id = request.get_json()
     if player_id.isalnum():
-        session_id = b.create_session(player_id[50:])
+        session_id = b.create_session(player_id[:50])
         return json.dumps(session_id)+'\n', 201
     else:
         return json.dumps(player_id), 403

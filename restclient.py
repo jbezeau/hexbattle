@@ -4,8 +4,8 @@ import numpy
 import requests
 import board
 
-URL = 'http://localhost:5000'
-# URL = 'http://hexbattle-env.eba-c7dstjkp.us-east-1.elasticbeanstalk.com'
+# URL = 'http://localhost:5000'
+URL = 'http://hexbattle-env.eba-c7dstjkp.us-east-1.elasticbeanstalk.com'
 DIMENSIONS_PATH = '/board/dimensions'
 TERRAIN_PATH = '/board/terrain'
 RESTART_PATH = '/board/reset'
