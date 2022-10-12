@@ -49,8 +49,8 @@ class Board:
         self.turn_summary = []
         self.victory = None
         # time to connect to data
+        # only the database connection knows about session_id
         self.config_id = config
-        self.session_id = None
         self.database = dbconnect.DBConnection()
         self.reset()
 
@@ -134,13 +134,14 @@ class Board:
         else:
             return None
 
-    def join_session(self, player_id=None):
+    def join_session(self, session_id):
+        # only the db connection knows session_id values
         if self.database.enable:
-            self.config_id = self.session_id = self.database.join_session(player_id)
+            self.config_id = self.database.join_session(session_id)
             self.load_config(self.config_id)
 
     def create_session(self, player_id):
-        # inserts session record and sets session_id value
+        # inserts session record and sets session_id value in the db connection
         # we've already loaded the related ID
         if self.database.enable:
             return self.database.create_session(self.config_id, player_id)

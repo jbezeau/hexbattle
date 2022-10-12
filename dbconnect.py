@@ -126,22 +126,21 @@ class DBConnection:
         cursor.close()
         return rows
 
-    def join_session(self, player_id):
-        # player is some kind of string unique to the player
+    def join_session(self, session_id):
         # choosing not to bake too much logic into this one function: if it doesn't join a session it returns None
         cnx = self._connect()
         cursor = cnx.cursor()
-        sql = "SELECT MAX(ID), config_id FROM game_session " \
-              "WHERE STATUS = 'OPEN' AND player_id = %s " \
-              "GROUP BY ID, config_id"
-        binds = (player_id,)
+        sql = "SELECT config_id FROM game_session WHERE STATUS = 'OPEN' AND ID = %s"
+        binds = (session_id,)
         cursor.execute(sql, binds)
         row = cursor.fetchone()
+        config = None
         self._session_id = None
         if row is not None:
             self._session_id = row[0]
+            config = row[1]
         cursor.close()
-        return self._session_id
+        return config
 
     def close_session(self):
         cnx = self._connect()

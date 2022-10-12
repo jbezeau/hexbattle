@@ -151,8 +151,9 @@ def session_list():
 
 @application.route('/session/join', methods=['POST'])
 def session_join():
+    # join a numbered session
     session_id = request.get_json()
-    b.session_id = session_id
+    b.join_session(session_id)
     return json.dumps(True)+'\n', 201
 
 
