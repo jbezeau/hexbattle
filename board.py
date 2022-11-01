@@ -306,7 +306,7 @@ class Board:
         # trim initial position off of results
         # result will be None if no path was found
         path = self.path_step(costs, [frm], to, 0)
-        print(costs)
+        # don't print costs, we can visualize moves now
         if path is not None:
             path.reverse()
             return path[1:]

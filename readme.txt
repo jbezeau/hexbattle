@@ -9,6 +9,8 @@ Deploy the game:
     Run application.py to start a flask server that hosts the game board instance.
     Run session.py to start the game launcher,
         or you can just start edit.py to set up a scenario and then run display.py to play out turns
+    Run simpleplayer.py to watch the computer do battle with itself!
+        The play function defined in simpleplayer will be introduced as an opponent option for humans soon.
 
 UI Guide:
     Session.py: edit your player ID, search for unfinished games to resume in Sessions or create a new Scenario to play
