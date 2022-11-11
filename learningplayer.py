@@ -164,9 +164,9 @@ if __name__ == '__main__':
         game_board.create_session(f'learningplayer {model_id}')
 
     # master play condition
-#    while game_board.victory is None:
-    print(game_board.turn)
-    total_attempts += move_token(game_board, execute_model)
+    while game_board.victory is None:
+        print(game_board.turn)
+        total_attempts += move_token(game_board, execute_model)
     print(f'Game won by {game_board.victory} after total {total_attempts} attempts')
 
     save = input(f'Save model {model_id}? [y/N]: ')
