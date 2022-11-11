@@ -15,15 +15,18 @@ LAYER_SIZE = board.X_MAX*board.Y_MAX
 # todo: split model... one for token selection, one for destination selection
 
 
-def generate_model(model_json=None):
-    if model_json:
-        m = k.models.model_from_json(model_json)
+def generate_model(data=None, weights=None):
+    if data:
+        m = k.models.model_from_json(data)
     else:
         m = k.models.Sequential()
         m.add(k.layers.Input(shape=(INP_CHANNELS, board.X_MAX, board.Y_MAX//2)))
         m.add(k.layers.Flatten())
         m.add(k.layers.Dense(units=LAYER_SIZE, activation='relu'))
         m.add(k.layers.Dense(units=LAYER_SIZE//2, activation='sigmoid'))
+
+    if weights:
+        m.set_weights(weights)
 
     m.compile(loss='mse', metrics='accuracy')
     return m
@@ -110,16 +113,49 @@ def interpret_output(p):
     return pick.pop()
 
 
+def move_token(b, m):
+    # update token locations and status (HP)
+    input_data, token_list, opp_flag = generate_input(b)
+
+    if len(token_list) == 0:
+        # couldn't find a playable unit
+        b.finish_turn()
+        return 0
+
+    frm = token_list.pop()
+    select_x, select_y = frm
+
+    # remember we're on batch item 0 when marking our active token
+    input_data[0, INP_COLOR, select_x, select_y // 2] = -1
+    execute_expected = generate_execute_expectation(b, frm)
+    print(execute_expected)
+
+    # now trap the network in here until it puts the piece down on a legal tile
+    execute_loop = True
+    step_attempts = 0
+    while execute_loop:
+        step_attempts += 1
+        # replace input player tokens with token selection
+        execute_prediction = m.predict(input_data)
+        m.train_on_batch(input_data, execute_expected.reshape(1, board.X_MAX * board.Y_MAX // 2))
+        to = interpret_output(execute_prediction.reshape(board.X_MAX, board.Y_MAX // 2))
+        if to is not None and b.resolve_action(frm, to):
+            execute_loop = False
+            print(f'move {frm}, {to} in {step_attempts} tries')
+    return step_attempts
+
+
 if __name__ == '__main__':
     game_board = board.Board()
-    model_data = None
     total_attempts = 0
+    model_data = None
 
     print(f'Available player models: {game_board.list_models()}')
     model_id = input('Enter model number to load [ENTER for new model]:')
     if len(model_id) > 0:
-        model_data = game_board.load_model(model_id)
-    execute_model = generate_model(model_data)
+        model_data, model_weights = game_board.load_model(model_id)
+        print(model_data)
+    execute_model = generate_model(model_data, model_weights)
 
     print(f'Available configurations: {game_board.list_configs()}')
     config_id = input('Enter configuration number [ENTER for none]:')
@@ -128,38 +164,11 @@ if __name__ == '__main__':
         game_board.create_session(f'learningplayer {model_id}')
 
     # master play condition
-    while game_board.victory is None:
-        print(game_board.turn)
-        input_data, token_list, opp_flag = generate_input(game_board)
-
-        if len(token_list) == 0:
-            # couldn't find a playable unit
-            game_board.finish_turn()
-            continue
-
-        frm = token_list.pop()
-        select_x, select_y = frm
-
-        # remember we're on batch item 0 when marking our active token
-        input_data[0, INP_COLOR, select_x, select_y//2] = -1
-        execute_expected = generate_execute_expectation(game_board, frm)
-        print(execute_expected)
-
-        # now trap the network in here until it puts the piece down on a legal tile
-        execute_loop = True
-        step_attempts = 0
-        while execute_loop:
-            step_attempts += 1
-            # replace input player tokens with token selection
-            execute_prediction = execute_model.predict(input_data)
-            execute_metrics = execute_model.train_on_batch(input_data, execute_expected.reshape(1, board.X_MAX * board.Y_MAX//2))
-            to = interpret_output(execute_prediction.reshape(board.X_MAX, board.Y_MAX//2))
-            if to is not None and game_board.resolve_action(frm, to):
-                execute_loop = False
-                print(f'move {to} in {step_attempts} tries')
-        total_attempts += step_attempts
+#    while game_board.victory is None:
+    print(game_board.turn)
+    total_attempts += move_token(game_board, execute_model)
     print(f'Game won by {game_board.victory} after total {total_attempts} attempts')
 
     save = input(f'Save model {model_id}? [y/N]: ')
     if save[0] == 'y' or save[0] == 'Y':
-        game_board.save_model(execute_model.to_json(), model_id)
+        game_board.save_model(execute_model.to_json(), execute_model.get_weights(), model_id)

@@ -165,15 +165,15 @@ class DBConnection:
         cnx.commit()
         return turn_id
 
-    def save_model(self, model_json, model_id=None):
+    def save_model(self, model_json, weights_json, model_id=None):
         cnx = self._connect()
         cursor = cnx.cursor()
         if model_id:
-            sql = 'UPDATE game_model SET model = %s WHERE ID = %s'
-            binds = (model_json, model_id)
+            sql = 'UPDATE game_model SET model = %s, weights = %s WHERE ID = %s'
+            binds = (model_json, weights_json, model_id)
         else:
-            sql = 'INSERT INTO game_model (model) values (%s)'
-            binds = (model_json,)
+            sql = 'INSERT INTO game_model (model, weights) values (%s, %s)'
+            binds = (model_json, weights_json)
         cursor.execute(sql, binds)
         model_id = cursor.lastrowid
         cursor.close()
@@ -193,7 +193,7 @@ class DBConnection:
     def load_model(self, model_id):
         cnx = self._connect()
         cursor = cnx.cursor()
-        sql = "SELECT model FROM game_model WHERE ID = %s"
+        sql = "SELECT model, weights FROM game_model WHERE ID = %s"
         binds = (model_id,)
         cursor.execute(sql, binds)
         row = cursor.fetchone()

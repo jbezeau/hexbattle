@@ -151,9 +151,16 @@ class Board:
         if self.database.enable:
             return self.database.create_session(self.config_id, player_id)
 
-    def save_model(self, model, model_id=None):
+    def save_model(self, config_json, model_weights, model_id=None):
         if self.database.enable:
-            return self.database.save_model(model, model_id)
+            # weird that keras will dump model configuration directly to JSON
+            # but weights are just kicked out as a list of numpy arrays and I have to handle them
+            weight_list = []
+            for layer_weights in model_weights:
+                # don't know why I have to dumps each list
+                weight_list.append(json.dumps(layer_weights.tolist()))
+            json_weights = json.dumps(weight_list)
+            return self.database.save_model(config_json, json_weights, model_id)
 
     def list_models(self):
         if self.database.enable:
@@ -162,10 +169,20 @@ class Board:
             return None
 
     def load_model(self, model_id):
+        # jump through all the serialization hoops here
         if self.database.enable:
-            return self.database.load_model(model_id)
+            model_rows = self.database.load_model(model_id)
+            model_config = model_rows[0]
+            model_weights = None
+            if model_rows[1] is not None:
+                weight_list = json.loads(model_rows[1])
+                model_weights = []
+                for w in weight_list:
+                    w_array = numpy.array(json.loads(w))
+                    model_weights.append(w_array)
+            return model_config, model_weights
         else:
-            return None
+            return None, None
 
     def finish_turn(self):
         # don't pass turn if game has been won
