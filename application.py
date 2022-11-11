@@ -1,6 +1,7 @@
 from flask import Flask, request
 import json
 import board
+import simpleplayer
 
 application = Flask(__name__)
 b = board.Board()
@@ -42,6 +43,14 @@ def end_turn():
         if turn.get('side') == b.turn:
             b.finish_turn()
             status = 201
+    return json.dumps(b.turn)+'\n', status
+
+
+@application.route('/simpleplayer/turn')
+def simple_turn():
+    status = 200
+    simpleplayer.play_turn(b)
+    b.finish_turn()
     return json.dumps(b.turn)+'\n', status
 
 

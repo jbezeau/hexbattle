@@ -30,12 +30,12 @@ RED_SOLDIER = {TYPE: SOLDIER, HP: 2, MV: 1, ATK: 1, RNG: 2, SIDE: RED}
 BLUE_SOLDIER = {TYPE: SOLDIER, HP: 2, MV: 1, ATK: 1, RNG: 2, SIDE: BLUE}
 RED_TANK = {TYPE: TANK, HP: 4, MV: 3, ATK: 2, RNG: 4, SIDE: RED}
 BLUE_TANK = {TYPE: TANK, HP: 4, MV: 3, ATK: 2, RNG: 4, SIDE: BLUE}
-RED_FLAG = {TYPE: FLAG, HP: 0, MV: 0, SIDE: RED}
-BLUE_FLAG = {TYPE: FLAG, HP: 0, MV: 0, SIDE: BLUE}
+RED_FLAG = {TYPE: FLAG, HP: 0, MV: 0, ATK: 0, RNG: 0, SIDE: RED}
+BLUE_FLAG = {TYPE: FLAG, HP: 0, MV: 0, ATK: 0, RNG: 0, SIDE: BLUE}
 
 # board dimensions, these should not vary from map to map for consistent NNET input layer
 X_MAX = 11
-Y_MAX = 17
+Y_MAX = 16
 TURNS = [RED, BLUE]
 
 
@@ -88,6 +88,11 @@ class Board:
             self.turn_summary.pop(0)
         self.turn_summary
         self.victory = None
+
+    # todo fix the mess I made by building a facade for self.database in board
+    # unfortunately there are a couple of database methods that do a lot of internal state
+    # and then a whole bunch where we just pass through and back
+    # I don't want to split the calls between Board( ) and Board( ).database even if that's cleaner code
 
     def save_config(self):
         # board config_id represents which saved state the game initializes to
@@ -146,8 +151,21 @@ class Board:
         if self.database.enable:
             return self.database.create_session(self.config_id, player_id)
 
-    def check_victory(self):
-        return self.victory
+    def save_model(self, model, model_id=None):
+        if self.database.enable:
+            return self.database.save_model(model, model_id)
+
+    def list_models(self):
+        if self.database.enable:
+            return self.database.list_models()
+        else:
+            return None
+
+    def load_model(self, model_id):
+        if self.database.enable:
+            return self.database.load_model(model_id)
+        else:
+            return None
 
     def finish_turn(self):
         # don't pass turn if game has been won
@@ -162,7 +180,7 @@ class Board:
 
             # quick check for mutual destruction
             if len(hps) == 0:
-                self.victory = 'Defeat'
+                self.victory = 'Draw'
                 self.turn = None
                 return self.turn
 
@@ -228,28 +246,21 @@ class Board:
     def resolve_action(self, frm, to):
         # execute on a game input
         frm_key = self.positions[frm[COL], frm[ROW]]
-        print(f'initial tile {frm} id {frm_key}')
         frm_token = self.tokens.get(frm_key)
-        print(f'acting unit {frm_token}')
 
         to_key = self.positions[to[COL], to[ROW]]
-        print(f'destination tile {to} id {to_key}')
         to_token = self.tokens.get(to_key)
-        print(f'destination token {to_token}')
 
         # choose a token
         if frm_token is None:
-            print(f'No acting token at position {frm}')
             return False
 
         # make sure frm token is on the acting player's side
         if self.turn != frm_token[SIDE]:
-            print(f'Acting side {self.turn} chose opposing token')
             return False
 
         # make sure frm token has not already acted
         if self.acted.count(frm_key) > 0:
-            print(f'Acting side {self.turn} has already used token {frm_key} this turn')
             return False
 
         if self.check_move(frm, to):
@@ -263,7 +274,6 @@ class Board:
                     # capturing flag converts all units for that side to their captor
                     if to_token[TYPE] == FLAG:
                         captured_side = to_token[SIDE]
-                        print(f'Unit {frm_key} has captured an enemy base')
                         for key in self.tokens:
                             unit = self.tokens[key]
                             if unit[SIDE] == captured_side:

@@ -16,6 +16,7 @@ CONFIRM = 'Confirm Order'
 VICTORY = 'Victory'
 
 END = 'End Turn'
+AUTO = 'Auto Turn'
 RESTART = 'New Game'
 
 
@@ -192,11 +193,17 @@ def play_loop():
     draw_state_text(win, state)
     draw_tokens(positions, tokens, acted)
 
+    # text controls
     if pg.font:
         restart = small_font.render(RESTART, True, (32, 32, 32))
         restart_pos = restart.get_rect(centerx=3 * background.get_width() / 4, centery=64+(background.get_height() / 4))
         controls[tuple(restart_pos)] = RESTART
         background.blit(restart, restart_pos)
+
+        auto = font.render(AUTO, True, (32, 32, 32))
+        auto_pos = auto.get_rect(centerx=3 * background.get_width() / 4, centery=96+(2*background.get_height()/3))
+        controls[tuple(auto_pos)] = AUTO
+        background.blit(auto, auto_pos)
 
     running = True
     while running:
@@ -229,6 +236,14 @@ def play_loop():
                         draw_state_text(win, state)
                         restclient.init_board()
                         turn = restclient.get_turn()
+                        positions = restclient.get_positions()
+                        acted = restclient.get_acted()
+                        tokens = restclient.get_units()
+                        draw_tokens(positions, tokens, acted)
+                    elif control_clicked[1] == AUTO:
+                        state = SELECT
+                        turn = restclient.auto_turn()
+                        win = restclient.get_victory()
                         positions = restclient.get_positions()
                         acted = restclient.get_acted()
                         tokens = restclient.get_units()

@@ -16,6 +16,8 @@ ACTIONS_PATH = '/token/actions'
 POSITIONS_PATH = '/tokens/positions'
 STATUS_PATH = '/tokens/status'
 
+SIMPLEPLAYER_PATH = '/simpleplayer/turn'
+
 SAVE_TERRAIN_PATH = '/edit/terrain'
 SAVE_POSITIONS_PATH = '/edit/positions'
 SAVE_STATUS_PATH = '/edit/status'
@@ -92,6 +94,10 @@ def post_turn(color):
     update = {'side': color}
     body = json.dumps(update)
     return _post(TURN_PATH, body)
+
+
+def auto_turn():
+    return _get(SIMPLEPLAYER_PATH)
 
 
 def get_acted():
