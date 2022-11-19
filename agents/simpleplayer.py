@@ -1,4 +1,4 @@
-import board
+from server import board
 
 
 def play_turn(b):

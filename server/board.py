@@ -1,4 +1,4 @@
-import dbconnect
+from server import dbconnect
 import json
 import numpy
 
@@ -189,14 +189,11 @@ class Board:
         if self.victory is None:
             # put any non-zero HP value in a map for each opponent
             # we only iterate the token list once this way
-            hps = []
-            for key in self.tokens:
-                unit = self.tokens[key]
-                if unit[HP] is not None and unit[HP] > 0:
-                    hps.append(unit[SIDE])
+            totals = self.color_totals()
 
             # quick check for mutual destruction
-            if len(hps) == 0:
+            eliminated = list(totals.values()).count(0)
+            if eliminated == len(TURNS):
                 self.victory = 'Draw'
                 self.turn = None
                 return self.turn
@@ -209,7 +206,7 @@ class Board:
                 # modulate over index positions for players in game
                 next_turn = next_color(next_turn)
                 # see if they have any survivors
-                hp = hps.count(next_turn)
+                hp = totals.get(next_turn)
 
             # if only one side has survivors, they win
             # otherwise, pass turn to next side with units to play
@@ -225,6 +222,22 @@ class Board:
             self.acted = []
             return self.turn
         return None
+
+    def color_totals(self):
+        # assign tokens to lists for each side for easy counting
+        # this will help for figuring out turn values in learningplayer
+        color_totals = {}
+
+        for color in TURNS:
+            color_totals[color] = 0
+
+        for key in self.tokens:
+            unit = self.tokens[key]
+            add = unit.get(HP)
+            if add is not None:
+                color_totals[unit.get(SIDE)] += add
+
+        return color_totals
 
     def check_move(self, frm, to):
         # test to see if a move is legal
@@ -296,16 +309,17 @@ class Board:
                             if unit[SIDE] == captured_side:
                                 unit[SIDE] = frm_token[SIDE]
             self.acted.append(frm_key)
-            self.turn_summary.append([make_coord_num(frm), make_coord_num(to)])
+            self.turn_summary.append([int(make_coord_num(frm)), int(make_coord_num(to))])
             return True
 
         if self.check_shoot(frm, to):
-            # legal to attack 2 spaces distance for 1 damage
             to_token[HP] -= frm_token[ATK]
-            if to_token[HP] < 1:
+            if to_token[HP] <= 0:
+                # eliminate overkill, we're prone to checking for exactly 0
+                to_token[HP] = 0
                 self.positions[to[COL], to[ROW]] = ''
             self.acted.append(frm_key)
-            self.turn_summary.append([make_coord_num(frm), make_coord_num(to)])
+            self.turn_summary.append([int(make_coord_num(frm)), int(make_coord_num(to))])
             return True
 
         return False
@@ -316,10 +330,8 @@ class Board:
 
         # check for invalid input
         if not self.check_clear(frm):
-            print(f'Invalid start coordinate {frm}')
             return None
         if not self.check_clear(to):
-            print(f'Invalid end coordinate {to}')
             return None
 
         # we want to evaluate all paths frm->to

@@ -1,8 +1,7 @@
 import pygame as pg
 
-import board
-import display
-import restclient
+from server import board
+from applications import display, restclient
 
 
 class EditControls:

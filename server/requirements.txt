@@ -1,0 +1,4 @@
+Flask==2.2.2
+keras==2.10.0
+mysql-connector-python==8.0.31
+numpy==1.23.4

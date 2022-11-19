@@ -83,21 +83,25 @@ p = b.get_path([1, 1], [2, 2])
 print(f'Path to blocked tile {p}')
 
 print('test various actions')
-b.positions[2, 4] = 'r1'
-b.positions[4, 4] = 'b1'
-b.positions[4, 2] = 'B1'
-print(f'Attack at range 2 for soldier {b.check_action((2, 4), (4, 4))}')
-print(f'Check 1 HP {b.tokens.get("b1")}')
-print(f'Try repeating same action {b.check_action((2, 4), (4, 4))}')
+b.positions[2, 4] = b'R1'
+b.positions[4, 4] = b'B1'
+b.positions[4, 2] = b'BT1'
+print(f'Initial HP totals {b.color_totals()}')
+print(f'Check Red turn {b.turn} (Red)')
+print(f'Attack at range 2 for soldier {b.resolve_action((2, 4), (4, 4))} (True)')
+print(f'Check 1 HP {b.tokens.get(b"B1")}')
+print(f'Try repeating same action {b.resolve_action((2, 4), (4, 4))} (False)')
 b.finish_turn()
-print(f'Move soldier towards red soldier {b.check_action((4, 4), (3, 5))}')
-print(f'Move tank to [1, 5] {b.check_action((4, 2), (1, 5))}')
+print(f'Move blue soldier towards red soldier {b.resolve_action((4, 4), (3, 5))} (True)')
+print(f'Move tank to [1, 5] {b.check_action((4, 2), (1, 5))} (True)')
 b.finish_turn()
-print(f'Move red soldier to capture blue soldier {b.check_action((2, 4), (3, 5))}')
-print(f'Check blue soldier {b.tokens.get("b1")}')
+print(f'Move red soldier to capture blue soldier {b.resolve_action((2, 4), (3, 5))} (True)')
+print(f'Check blue soldier {b.tokens.get(b"B1")}')
 b.finish_turn()
-print(f'Shoot red soldier with blue tank {b.check_action((1, 5), (3, 5))}')
-print(f'Check red soldier {b.tokens.get("r1")}')
+print(f'Shoot red soldier with blue tank {b.resolve_action((1, 5), (3, 5))}')
+print(f'Check red soldier {b.tokens.get(b"R1")}')
+b.finish_turn()
+print(f'Check victory {b.victory}')
 
 # exercise database stuff
 config_id = b.save_config()

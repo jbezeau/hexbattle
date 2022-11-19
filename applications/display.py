@@ -1,6 +1,6 @@
 import pygame as pg
-import board
-import restclient
+from server import board
+from applications import restclient
 
 BG_COLOR = (64, 64, 64)
 RED_COLOR = (170, 32, 32)
@@ -17,6 +17,7 @@ VICTORY = 'Victory'
 
 END = 'End Turn'
 AUTO = 'Auto Turn'
+AI = 'AI Turn'
 RESTART = 'New Game'
 
 
@@ -200,6 +201,11 @@ def play_loop():
         controls[tuple(restart_pos)] = RESTART
         background.blit(restart, restart_pos)
 
+        ai = font.render(AI, True, (32, 32, 32))
+        ai_pos = ai.get_rect(centerx=3 * background.get_width() / 4, centery=48+(2*background.get_height()/3))
+        controls[tuple(ai_pos)] = AI
+        background.blit(ai, ai_pos)
+
         auto = font.render(AUTO, True, (32, 32, 32))
         auto_pos = auto.get_rect(centerx=3 * background.get_width() / 4, centery=96+(2*background.get_height()/3))
         controls[tuple(auto_pos)] = AUTO
@@ -243,6 +249,14 @@ def play_loop():
                     elif control_clicked[1] == AUTO:
                         state = SELECT
                         turn = restclient.auto_turn()
+                        win = restclient.get_victory()
+                        positions = restclient.get_positions()
+                        acted = restclient.get_acted()
+                        tokens = restclient.get_units()
+                        draw_tokens(positions, tokens, acted)
+                    elif control_clicked[1] == AI:
+                        state = SELECT
+                        turn = restclient.ai_turn()
                         win = restclient.get_victory()
                         positions = restclient.get_positions()
                         acted = restclient.get_acted()

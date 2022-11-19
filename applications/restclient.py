@@ -2,10 +2,10 @@ import json
 import time
 import numpy
 import requests
-import board
+from server import board
 
-# URL = 'http://localhost:5000'
-URL = 'http://hexbattle-env.eba-c7dstjkp.us-east-1.elasticbeanstalk.com'
+URL = 'http://localhost:5000'
+# URL = 'http://hexbattle-env.eba-c7dstjkp.us-east-1.elasticbeanstalk.com'
 DIMENSIONS_PATH = '/board/dimensions'
 TERRAIN_PATH = '/board/terrain'
 RESTART_PATH = '/board/reset'
@@ -17,6 +17,7 @@ POSITIONS_PATH = '/tokens/positions'
 STATUS_PATH = '/tokens/status'
 
 SIMPLEPLAYER_PATH = '/simpleplayer/turn'
+LEARNINGPLAYER_TURN_PATH = '/learningplayer/turn'
 
 SAVE_TERRAIN_PATH = '/edit/terrain'
 SAVE_POSITIONS_PATH = '/edit/positions'
@@ -98,6 +99,11 @@ def post_turn(color):
 
 def auto_turn():
     return _get(SIMPLEPLAYER_PATH)
+
+
+def ai_turn():
+    # this forces an init of learning player model if not explicitly set up
+    return _get(LEARNINGPLAYER_TURN_PATH)
 
 
 def get_acted():

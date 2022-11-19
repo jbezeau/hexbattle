@@ -1,5 +1,5 @@
 import requests
-import restclient
+from application import restclient
 
 URL = restclient.URL
 

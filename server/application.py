@@ -1,10 +1,11 @@
 from flask import Flask, request
 import json
 import board
-import simpleplayer
+from agents import simpleplayer, learningplayer
 
 application = Flask(__name__)
 b = board.Board()
+nn = learningplayer.LearningPlayer()
 
 
 @application.route('/hexbattle')
@@ -22,7 +23,7 @@ def reset():
 def get_dimensions():
     # functions that output aspects of the map will have sparse output
     # so we need one function to tell clients what the maximum map dimensions are
-    return json.dumps([board.X_MAX, board.Y_MAX])+'\n', 200
+    return json.dumps([board.X_MAX, board.Y_MAX]) + '\n', 200
 
 
 @application.route('/board/terrain')
@@ -54,10 +55,25 @@ def simple_turn():
     return json.dumps(b.turn)+'\n', status
 
 
+@application.route('/learningplayer/init', methods=['POST'])
+def learning_init():
+    model_id = request.get_json()
+    config, weights = b.load_model(model_id)
+    nn.init(config, weights)
+    return '', 201
+
+
+@application.route('/learningplayer/turn')
+def learning_turn():
+    # AI moves just one token and ends turn if no more
+    side = b.turn
+    while side == b.turn and b.victory is None:
+        nn.play_token(b)
+    return json.dumps(b.turn)+'\n', 200
+
+
 @application.route('/player/victory')
 def get_victory():
-    status = 200
-    out = None
     if b.victory is not None:
         out = json.dumps(b.victory)
     else:

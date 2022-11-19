@@ -1,9 +1,6 @@
 import pygame as pg
 
-import board
-import display
-import edit
-import restclient
+from applications import display, restclient, edit
 
 
 class SessionControls:
