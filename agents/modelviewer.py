@@ -16,6 +16,11 @@ background = pygame.Surface(screen.get_size())
 background = background.convert()
 background.fill((64, 64, 64))
 
+list_surface = pygame.Surface(screen.get_size())
+list_surface = list_surface.convert()
+list_surface.fill((0, 0, 0))
+list_surface.set_colorkey((0, 0, 0))
+
 text_surface = pygame.Surface(screen.get_size())
 text_surface = text_surface.convert()
 text_surface.fill((0, 0, 0))
@@ -28,7 +33,7 @@ smaller_font = pygame.font.Font(None, 16)
 
 def model_list_select(b):
     title_text = large_font.render("Select Model", True, TEXT_COLOR)
-    text_surface.blit(title_text, (12, 12))
+    list_surface.blit(title_text, (12, 12))
     rows = b.list_models()
     new_selectable = {}
     for i, row in enumerate(rows):
@@ -36,14 +41,14 @@ def model_list_select(b):
         control_text = small_font.render(row_id, True, TEXT_COLOR)
         control_pos = control_text.get_rect(centerx=screen.get_width() * 1//5,
                                             centery=(i * 40) + screen.get_height() * 1//8)
-        control_x = text_surface.get_width() * 0//5
-        control_w = text_surface.get_width() * 2//5
+        control_x = screen.get_width() * 0//5
+        control_w = screen.get_width() * 2//5
         control_y = control_pos.top
         control_b = control_pos.bottom
         highlight = pygame.Rect(control_x, control_y, control_w, control_b - control_y)
         new_selectable[tuple(highlight)] = row_id
-        text_surface.fill((128, 128, 128), highlight)
-        text_surface.blit(control_text, control_pos)
+        list_surface.fill((128, 128, 128), highlight)
+        list_surface.blit(control_text, control_pos)
     return new_selectable
 
 
@@ -63,7 +68,7 @@ def draw_layer_dims(sizes):
     i = 0
     for layer_size in sizes:
         weight_text = small_font.render(str(layer_size), True, TEXT_COLOR)
-        text_surface.blit(weight_text, (24, i + screen.get_height() * 4 // 5))
+        text_surface.blit(weight_text, (screen.get_width() * 1//5, i + screen.get_height() * 3 // 5))
         i += 24
 
 
@@ -140,6 +145,7 @@ def draw_to_screen():
     pygame.display.flip()
     screen.blit(background, (0, 0))
     screen.blit(text_surface, (0, 0))
+    screen.blit(list_surface, (0, 0))
 
 
 def main_loop(b):
@@ -158,6 +164,9 @@ def main_loop(b):
                 model_clicked = pygame.Rect(pygame.mouse.get_pos(), (1, 1)).collidedict(model_list)
                 if model_clicked is not None:
                     layers, weights = b.load_model(model_clicked[1])
+                    text_surface.fill((0, 0, 0))
+                    background.fill((64, 64, 64))
+                    mouse_tile = None
                     draw_config_text(layers)
             if event.type == pygame.QUIT:
                 loop = False

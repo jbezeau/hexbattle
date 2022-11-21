@@ -23,10 +23,6 @@ class LearningPlayer:
         self.history_length = 0
         self.model_id = model_id
 
-    def new_model(self, b):
-        self.m = generate_model()
-        self.model_id = b.save_model(self.m, b)
-
     def play_token(self, b, train=False, flip=None):
         # todo set up so we have explicit load model and init from application
         if self.m is None:
@@ -43,10 +39,16 @@ class LearningPlayer:
                 self.all_rewards = numpy.multiply(self.all_rewards, -1)
 
             # automatically save model on victory
-            if b.victory is not None:
+            if train and b.victory is not None:
+                # reshape total history for input layer
+                train_inputs = self.all_inputs.reshape(
+                    (self.history_length, INP_CHANNELS, board.X_MAX, board.Y_MAX // 2))
+                # add 0.5 to total rewards so training values are 0 or 1, and reshape for output layer
+                train_rewards = numpy.add(self.all_rewards, 0.5).reshape(self.history_length, LAYER_SIZE)
+                self.m.fit(train_inputs, train_rewards, verbose=0)
                 save_model(self.m, b, self.model_id)
             return 0
-        else:
+        elif train:
             # we moved a token so remember the starting state
             # create an expectation map marking the spot we moved to
             self.history_length += 1
@@ -66,12 +68,7 @@ class LearningPlayer:
             else:
                 self.all_inputs = numpy.append(self.all_inputs, state)
                 self.all_rewards = numpy.append(self.all_rewards, state_reward)
-            # reshape total history for input layer
-            train_inputs = self.all_inputs.reshape((self.history_length, INP_CHANNELS, board.X_MAX, board.Y_MAX // 2))
-            # add 0.5 to total rewards so training values are 0 or 1, and reshape for output layer
-            train_rewards = numpy.add(self.all_rewards, 0.5).reshape(self.history_length, LAYER_SIZE)
-            self.m.fit(train_inputs, train_rewards, verbose=0)
-            return 1
+        return 1
 
 
 def load_model(b, model_id=None):
@@ -86,24 +83,27 @@ def load_model(b, model_id=None):
     weights = None
     if model_id is not None:
         data, weights = b.load_model(model_id)
-    m = generate_model(data, weights)
+
+    m = k.models.model_from_json(data)
+    m.set_weights(weights)
+    m.compile(loss='mse', metrics='accuracy')
+
     return model_id, m
 
 
-def generate_model(data=None, weights=None):
-    if data:
-        m = k.models.model_from_json(data)
-    else:
-        m = k.models.Sequential()
-        m.add(k.layers.Input(shape=(INP_CHANNELS, board.X_MAX, board.Y_MAX // 2)))
-        m.add(k.layers.Flatten())
-        m.add(k.layers.Dense(units=LAYER_SIZE*2, activation='relu'))
-        m.add(k.layers.Dense(units=LAYER_SIZE, activation='sigmoid'))
+def generate_model(layers, width):
+    m = k.models.Sequential()
 
-    if weights:
-        m.set_weights(weights)
+    # input must match input channels of game board
+    m.add(k.layers.Input(shape=(INP_CHANNELS, board.X_MAX, board.Y_MAX // 2)))
+    m.add(k.layers.Flatten())
 
-    m.compile(loss='mse', metrics='accuracy')
+    for i in range(layers):
+        m.add(k.layers.Dense(units=width, activation='relu'))
+
+    # output must match game board exactly once
+    m.add(k.layers.Dense(units=LAYER_SIZE, activation='sigmoid'))
+
     return m
 
 
@@ -263,25 +263,55 @@ def move_token(b, m, train=True, flip=None):
 if __name__ == '__main__':
     numpy.set_printoptions(precision=2)
     game_board = board.Board()
-    player = None
+    red_player = None
+    blue_player = None
     total_attempts = 0
 
-    print(f'Available player models: {game_board.list_models()}')
-    model_input = input('Enter model number to load [ENTER for new model]:')
-    player = LearningPlayer(model_input)
-    if len(model_input) == 0:
-        player.new_model(game_board)
+    models = game_board.list_models()
+    print(f'Available player models: {models}')
+    model_input = input('Enter model number to load for RED [SAME AS BLUE]:')
+    if len(model_input) > 0:
+        red_player = LearningPlayer(model_input)
+    model_input = input(f'Enter model number to load for BLUE [NEW MODEL]:')
+    if len(model_input) > 0:
+        blue_player = LearningPlayer(model_input)
+    elif len(model_input) == 0:
+        layer_input = input('Enter number of hidden layers for new model [1]:')
+        width_input = input(f'Enter width of hidden layers for new model [{LAYER_SIZE*2}]:')
+        if len(layer_input) == 0:
+            # minimal default
+            layer_input = 1
+        if len(width_input) == 0:
+            # arbitrary default
+            width_input = LAYER_SIZE * 2
+        # generate model, save to get an ID number, create player
+        new_m = generate_model(int(layer_input), int(width_input))
+        new_id = save_model(new_m, game_board)
+        blue_player = LearningPlayer(new_id)
 
     print(f'Available configurations: {game_board.list_configs()}')
     config_id = input('Enter configuration number [ENTER for none]:')
     if len(config_id) > 0:
         game_board.load_config(config_id)
-        game_board.create_session(f'learningplayer {player.model_id}')
+        game_board.create_session(f'learningplayer {blue_player.model_id}')
 
     flip_mode = input('Enter axis flip: X, Y, XY, [None]:')
 
     # master play condition
     total_moves = 0
     while game_board.victory is None:
-        total_moves += player.play_token(game_board, True, flip_mode)
-    print(f'Game won by {game_board.victory} after {total_moves} moves')
+        if red_player and game_board.turn == board.RED:
+            total_moves += red_player.play_token(game_board, True, flip_mode)
+        else:
+            # assume game_board.turn == board.BLUE
+            total_moves += blue_player.play_token(game_board, True, flip_mode)
+    if red_player:
+        if game_board.victory == board.BLUE:
+            # also save the losing player
+            save_model(red_player.m, game_board, red_player.model_id)
+        elif game_board.victory == board.RED:
+            save_model(blue_player.m, game_board, blue_player.model_id)
+    if red_player and game_board.victory == board.RED:
+        print(f'Game won by model {red_player.model_id} for {board.RED} after {total_moves} moves')
+    else:
+        print(f'Game won by model {blue_player.model_id} for {game_board.victory} after {total_moves} moves')
