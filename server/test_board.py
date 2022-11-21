@@ -1,4 +1,6 @@
 import board
+import json
+import numpy
 
 b = board.Board()
 for i in range(board.X_MAX):
@@ -108,3 +110,15 @@ config_id = b.save_config()
 print(f'Saved board as config {config_id}')
 b.reset()
 b.delete_config()
+
+config_json, weights = b.load_model('1')
+print(f'Load config {config_json}')
+config = json.loads(config_json).get('config')
+for layer in config.get('layers'):
+    print(layer.get('config').get('name'))
+print(f'Load weights {len(weights)}')
+for w in weights:
+    print(w.shape)
+print(weights[0][0:, 0])
+print(weights[1][0])
+print(weights[2][0, 0:])

@@ -30,15 +30,7 @@ class LearningPlayer:
     def play_token(self, b, train=False, flip=None):
         # todo set up so we have explicit load model and init from application
         if self.m is None:
-            if self.model_id is None:
-                # auto-init to latest model
-                models = b.list_models()
-                if models is not None:
-                    model_row = models.pop()
-                    self.model_id = model_row[0]
-            if self.model_id is not None:
-                data, weights = b.load_model(self.model_id)
-            self.m = generate_model(data, weights)
+            self.model_id, self.m = load_model(b, self.model_id)
 
         # play token and record what we did
         state, move = move_token(b, self.m, train, flip)
@@ -80,6 +72,22 @@ class LearningPlayer:
             train_rewards = numpy.add(self.all_rewards, 0.5).reshape(self.history_length, LAYER_SIZE)
             self.m.fit(train_inputs, train_rewards, verbose=0)
             return 1
+
+
+def load_model(b, model_id=None):
+    if model_id is None:
+        # auto-init to latest model
+        models = b.list_models()
+        if models is not None:
+            model_row = models.pop()
+            model_id = model_row[0]
+
+    data = None
+    weights = None
+    if model_id is not None:
+        data, weights = b.load_model(model_id)
+    m = generate_model(data, weights)
+    return model_id, m
 
 
 def generate_model(data=None, weights=None):
@@ -261,7 +269,7 @@ if __name__ == '__main__':
     print(f'Available player models: {game_board.list_models()}')
     model_input = input('Enter model number to load [ENTER for new model]:')
     player = LearningPlayer(model_input)
-    if model_input is None:
+    if len(model_input) == 0:
         player.new_model(game_board)
 
     print(f'Available configurations: {game_board.list_configs()}')

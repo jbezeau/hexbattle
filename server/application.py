@@ -55,12 +55,21 @@ def simple_turn():
     return json.dumps(b.turn)+'\n', status
 
 
+@application.route('/learningplayer/list')
+def model_list():
+    return json.dumps(b.list_models()), 200
+
+
 @application.route('/learningplayer/init', methods=['POST'])
 def learning_init():
     model_id = request.get_json()
-    config, weights = b.load_model(model_id)
-    nn.init(config, weights)
-    return '', 201
+    if nn.m is None:
+        # set model_id if model hasn't been loaded
+        nn.model_id = model_id
+        status = 201
+    else:
+        status = 403
+    return json.dumps(nn.model_id), status
 
 
 @application.route('/learningplayer/turn')
