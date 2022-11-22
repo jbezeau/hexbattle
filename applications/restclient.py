@@ -18,6 +18,8 @@ STATUS_PATH = '/tokens/status'
 
 SIMPLEPLAYER_PATH = '/simpleplayer/turn'
 LEARNINGPLAYER_TURN_PATH = '/learningplayer/turn'
+LEARNINGPLAYER_MODELS = '/learningplayer/list'
+LEARNINGPLAYER_INIT = '/learningplayer/init'
 
 SAVE_TERRAIN_PATH = '/edit/terrain'
 SAVE_POSITIONS_PATH = '/edit/positions'
@@ -60,14 +62,14 @@ def _get(path):
 def _post(path, data):
     print(path)
     start = time.perf_counter()
-    response = requests.post(URL+path, json=data)
+    response = requests.post(URL+path, json=json.dumps(data))
     duration = time.perf_counter() - start
     print(f'duration {duration}')
     return response.json()
 
 
 def init_board():
-    _get(RESTART_PATH)
+    return _get(RESTART_PATH)
     
     
 def get_dimensions():
@@ -93,8 +95,7 @@ def get_victory():
 
 def post_turn(color):
     update = {'side': color}
-    body = json.dumps(update)
-    return _post(TURN_PATH, body)
+    return _post(TURN_PATH, update)
 
 
 def auto_turn():
@@ -104,6 +105,15 @@ def auto_turn():
 def ai_turn():
     # this forces an init of learning player model if not explicitly set up
     return _get(LEARNINGPLAYER_TURN_PATH)
+
+
+def ai_models():
+    # list models to load into player
+    return _get(LEARNINGPLAYER_MODELS)
+
+
+def ai_init(model_id):
+    return _post(LEARNINGPLAYER_INIT, model_id)
 
 
 def get_acted():

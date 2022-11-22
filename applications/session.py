@@ -7,11 +7,13 @@ class SessionControls:
     PLAYER_ID = 'Enter Player ID'
     LIST = 'Session List'
     JOIN = 'Join Session'
+    MODELS = 'List Models'
     CONFIG = 'Scenario List'
     EDIT = 'Edit Scenario'
     START = 'Start'
-    MENU_MAIN = [PLAYER_ID, LIST, CONFIG]
+    MENU_MAIN = [PLAYER_ID, LIST, MODELS, CONFIG]
     MENU_SESSION = [LIST, JOIN]
+    MENU_MODEL = [MODELS, START]
     MENU_START = [CONFIG, EDIT, START]
     SELECT_SESSION = 'Session'
     SELECT_CONFIG = 'Scenario'
@@ -100,13 +102,19 @@ if __name__ == '__main__':
                                 selectable = draw_selections(sessions)
                         case SessionControls.JOIN:
                             restclient.join_session(player_id)
+                        case SessionControls.MODELS:
+                            menu = SessionControls.MENU_MODEL
+                            models = restclient.ai_models()
+                            if models:
+                                selectable = draw_selections(models)
                         case SessionControls.CONFIG:
                             menu = SessionControls.MENU_START
                             configs = restclient.get_configs()
                             if configs:
                                 selectable = draw_selections(configs)
                         case SessionControls.START:
-                            restclient.start_session(player_id)
+                            if player_id:
+                                restclient.start_session(player_id)
                             display.play_loop()
                         case SessionControls.EDIT:
                             edit.edit_loop()
@@ -119,6 +127,8 @@ if __name__ == '__main__':
                         display.play_loop()
                     elif menu == SessionControls.MENU_START:
                         restclient.load_config(selection_clicked[1])
+                    elif menu == SessionControls.MENU_MODEL:
+                        restclient.ai_init(selection_clicked[1])
                 else:
                     menu = SessionControls.MENU_MAIN
                     controls = draw_controls(menu)

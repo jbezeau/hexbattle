@@ -149,7 +149,8 @@ class Board:
         # inserts session record and sets session_id value in the db connection
         # we've already loaded the related ID
         if self.database.enable:
-            return self.database.create_session(self.config_id, player_id)
+            if self.config_id > 0 and player_id is not None:
+                return self.database.create_session(self.config_id, player_id)
 
     def save_model(self, config_json, model_weights, model_id=None):
         if self.database.enable:

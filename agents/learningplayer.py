@@ -23,6 +23,13 @@ class LearningPlayer:
         self.history_length = 0
         self.model_id = model_id
 
+    def reset(self, b, model_id):
+        self.m = None
+        self.all_inputs = None
+        self.all_rewards = None
+        self.history_length = 0
+        self.model_id = model_id
+
     def play_token(self, b, train=False, flip=None):
         # todo set up so we have explicit load model and init from application
         if self.m is None:

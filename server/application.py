@@ -39,8 +39,7 @@ def end_turn():
     # TODO generate a one-time token the interface uses to validate /turn posts
     status = 200
     if request.method == 'POST':
-        turn_txt = request.get_json()
-        turn = json.loads(turn_txt)
+        turn = json.loads(request.get_json())
         if turn.get('side') == b.turn:
             b.finish_turn()
             status = 201
@@ -62,13 +61,9 @@ def model_list():
 
 @application.route('/learningplayer/init', methods=['POST'])
 def learning_init():
-    model_id = request.get_json()
-    if nn.m is None:
-        # set model_id if model hasn't been loaded
-        nn.model_id = model_id
-        status = 201
-    else:
-        status = 403
+    model_id = json.loads(request.get_json())
+    nn.reset(b, model_id)
+    status = 201
     return json.dumps(nn.model_id), status
 
 
@@ -109,7 +104,7 @@ def show_acted():
 def show_valid_moves():
     # previously display would iterate over all positions, asking board if a move was valid
     # we shouldn't be so inefficient with REST requests so this handler does the iteration
-    token = request.get_json()
+    token = json.loads(request.get_json())
     frm = board.make_coord_tuple(token['hex'])
     moves = []
     for x in range(board.X_MAX):
@@ -127,7 +122,7 @@ def update_positions():
     # we try to take all of those actions in order
     status = 200
     if request.method == 'POST':
-        moves = request.get_json()
+        moves = json.loads(request.get_json())
         for hex_key in moves:
             hex_num = int(hex_key)
             b.resolve_action(board.make_coord_tuple(hex_num), board.make_coord_tuple(moves[hex_key]))
@@ -138,7 +133,7 @@ def update_positions():
 @application.route('/edit/terrain', methods=['POST'])
 def edit_terrain():
     # expect {'hex_num':elevation, ...}
-    terrains = request.get_json()
+    terrains = json.loads(request.get_json())
     for hex_key in terrains:
         hex_num = int(hex_key)
         x, y = board.make_coord_tuple(hex_num)
@@ -149,7 +144,7 @@ def edit_terrain():
 @application.route('/edit/positions', methods=['POST'])
 def edit_positions():
     # expect {'hex_num':unit_id}, ...}
-    positions = request.get_json()
+    positions = json.loads(request.get_json())
     for hex_key in positions:
         hex_num = int(hex_key)
         x, y = board.make_coord_tuple(hex_num)
@@ -162,7 +157,7 @@ def edit_units():
     # expect {unit_id: {stat block}}
     # debate between adding / replacing units in default list, and replacing entire list
     # I like the thought of not having to re-specify the flags and tanks
-    units = request.get_json()
+    units = json.loads(request.get_json())
     for token in units:
         b.tokens[token.encode('UTF-8')] = units[token]
     return b.output_units() + '\n', 201
@@ -178,7 +173,7 @@ def commit_edit():
 def session_list():
     player_id = None
     if request.method == 'POST':
-        player_id = request.get_json()
+        player_id = json.loads(request.get_json())
     rows = b.list_sessions(player_id)
     return json.dumps(rows)+'\n', 200
 
@@ -186,7 +181,7 @@ def session_list():
 @application.route('/session/join', methods=['POST'])
 def session_join():
     # join a numbered session
-    session_id = request.get_json()
+    session_id = json.loads(request.get_json())
     b.join_session(session_id)
     return json.dumps(True)+'\n', 201
 
@@ -195,7 +190,7 @@ def session_join():
 def session_create():
     # quick length limit on player ID, same as UI
     # strings have a built-in test for alphanumeric character content
-    player_id = request.get_json()
+    player_id = json.loads(request.get_json())
     if player_id.isalnum():
         session_id = b.create_session(player_id[:50])
         return json.dumps(session_id)+'\n', 201
@@ -211,7 +206,7 @@ def config_list():
 
 @application.route('/board/load', methods=['POST'])
 def config_load():
-    config_id = request.get_json()
+    config_id = json.loads(request.get_json())
     new_config = b.load_config(config_id)
     return json.dumps(new_config)+'\n', 202
 
